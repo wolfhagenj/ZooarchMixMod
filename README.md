@@ -5,7 +5,7 @@ In addition, this repository maintains code necessary to apply the method to oth
 
 ## How to apply this method to your data
 
-To apply the method to your own zooarchaeological data, you first need to set up your data in the following format. I have typically used the {data.table} package to prepare my data, which is what the "data_cleaning.R" script uses. However, the following steps can also be done using a different package or even outside of R, as long as the following requirements are met:
+To apply the method to your own zooarchaeological data, you first need to set up your data in the following format. I have typically used the {data.table} package to prepare my data, which is what the "data_cleaning.R" script uses. I also use the {zoolog} package (with some additions) to get standard measurements for calculating LSI values. However, the following steps can also be done using a different package or even outside of R, as long as the following requirements are met:
 
 |Arch_ID|Site_No|Specimen_No|Element|Element_Portion|Measurement|Measurement_Set|Immature|Value_obs|Value_sd|Reference_obs|Reference_sd|
 |---|---|---|---|---|---|---|---|---|---|---|---|
