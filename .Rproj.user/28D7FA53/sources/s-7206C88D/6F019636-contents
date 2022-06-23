@@ -182,6 +182,7 @@ site_demographic_observations <- dataset[`Has Biological Taxonomy [Label]` %in% 
 measured_assemblage <- site_mixmod_data[, .N, .(ID, Site, Specimen_No, Element, Element_Portion, Immature)]
 #here, the "N" variable is the number of observed measurements the specimen has
 
+#Create the modeled assemblage
 #if data are set up in the EOL format, this is simply done by removing measurement variables from the original
 #line that created the measurement assemblage
 modeled_assemblage <- dataset[`Has Biological Taxonomy [Label]` %in% c(modeled_taxon) & `Has anatomical identification [Label]` %in% c(modeled_elements, extra_element_names),
@@ -198,19 +199,19 @@ modeled_assemblage <- dataset[`Has Biological Taxonomy [Label]` %in% c(modeled_t
 #The next step is to align the "Specimen_No" variable for the specimens with measurements
 #and leave it as NA (missing value) for non-measured specimens.
 #This is done by using a "join"
-modeled_assemblage <- measured_assemblage[, .(ID, Specimen_No)][modeled_assemblage, on = "ID"]
+modeled_assemblage <- measured_assemblage[, .(ID, Specimen_No, Element_Portion, Element, Immature)][modeled_assemblage, on = "ID"]
 
-#The final step is to assign the Element_Portion and Immature variables for all specimens.
+#The final step is to assign the Element_Portion and Immature variables for all non-measured specimens.
 #These must be the same codes as used in the original model (as they impact what parameter values are used)
 #These codes are part of the assemblage_restructure() function
 for(i in 1:site_element_key[, .N]) {
-  modeled_assemblage[Anatomy %in% site_element_key[i, `Anatomy Label`], Element := site_element_key[i, `Element Label`]]
+  modeled_assemblage[is.na(Element_Portion) & Anatomy %in% site_element_key[i, `Anatomy Label`], Element := site_element_key[i, `Element Label`]]
   #Separate out proximal and distal element portions based on presence of later-fusing measurements (e.g., radius bone is proximal/distal based on presence of Bd measurement)
   if(site_element_key[i, `Element Label`] %in% c("Rad", "Mtc", "Fem", "Mtt")) {
-    modeled_assemblage[Anatomy %in% site_element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(site_element_key[i, `Element Label`], "dist", sep = "_"), paste(site_element_key[i, `Element Label`], "prox", sep = "_"))]
+    modeled_assemblage[is.na(Element_Portion) & Anatomy %in% site_element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(site_element_key[i, `Element Label`], "dist", sep = "_"), paste(site_element_key[i, `Element Label`], "prox", sep = "_"))]
   }
   if(site_element_key[i, `Element Label`] %in% c("Tib")) {
-    modeled_assemblage[Anatomy %in% site_element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(site_element_key[i, `Element Label`], "prox", sep = "_"), paste(site_element_key[i, `Element Label`], "dist", sep = "_"))]
+    modeled_assemblage[is.na(Element_Portion) & Anatomy %in% site_element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(site_element_key[i, `Element Label`], "prox", sep = "_"), paste(site_element_key[i, `Element Label`], "dist", sep = "_"))]
   }
 }
 
@@ -232,9 +233,90 @@ modeled_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1"), Immatu
 modeled_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
 modeled_assemblage[is.na(Immature) & Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
 
-
 ####Collecting the "full" assemblage####
 #The same logic that underpins the estimation of a "modeled" assemblage can be extended to element portions
 #that had no observed measurements at all (a "full" assemblage). This is useful for extending an analysis
 #to element portions (parts of the body that you want to study) that either do not have standard breadth
-#measurements or did not have 
+#measurements or did not have any observed measurements but you want to model them directly anyway.
+
+#First, define the additional elements (and the associated "element portion" labels you want to use)
+additional_elements <- c("innominate bone", "ulna") #same naming convention as the original elements
+additional_element_labels <- c("Pel", "Uln") #IMPORTANT! Make sure that the order is the same across both
+
+#Expand the element key to create new element labels
+site_full_element_key <- rbind(site_element_key,
+                                    data.table(`Anatomy Label` = additional_elements, `Element Label` = additional_element_labels))
+
+#Second, create the full assemblage
+#if data are set up in the EOL format, this is simply done by removing measurement variables from the original
+#line that created the measurement assemblage and
+#adding additional_elements to the filter on `Has anatomical identification [Label]`
+full_assemblage <- dataset[`Has Biological Taxonomy [Label]` %in% c(modeled_taxon) & `Has anatomical identification [Label]` %in% c(modeled_elements, extra_element_names, additional_elements),
+                           .(ID = paste("Barcin", `Label`, sep = " "),
+                             #I have separated these columns into separate lines to make it easier to read, but this is not necessary
+                             #NOTE: if running a multisite analysis, I find it helpful to append the site name to whatever label the
+                             #specimen has to ensure that there are no repeated labels across different sites
+                             Site = "Barcin",
+                             Taxon = `Has Biological Taxonomy [Label]`,
+                             Anatomy = `Has anatomical identification [Label]`,
+                             `Proximal Fusion` = `Has fusion character [Proximal Label]`,
+                             `Distal Fusion` = `Has fusion character [Distal Label]`)]
+
+#The rest of the formatting is largely the same as with the modeled assemblage, though including the additional elements
+#Some troubleshooting may be necessary to include the right mix of additional elements you want to include
+
+#The next step is to align the "Specimen_No" variable for the specimens with measurements
+#and leave it as NA (missing value) for non-measured specimens.
+#This is done by using a "join"
+full_assemblage <- measured_assemblage[, .(ID, Specimen_No, Element_Portion, Element, Immature)][full_assemblage, on = "ID"]
+
+#The final step is to assign the Element_Portion and Immature variables for all non-measured specimens.
+#These must be the same codes as used in the original model (as they impact what parameter values are used)
+#These codes are part of the assemblage_restructure() function
+for(i in 1:site_full_element_key[, .N]) {
+  full_assemblage[is.na(Element_Portion) & Anatomy %in% site_full_element_key[i, `Anatomy Label`], Element := site_full_element_key[i, `Element Label`]]
+  #Separate out proximal and distal element portions based on presence of later-fusing measurements (e.g., radius bone is proximal/distal based on presence of Bd measurement)
+  if(site_full_element_key[i, `Element Label`] %in% c("Rad", "Mtc", "Fem", "Mtt")) {
+    full_assemblage[is.na(Element_Portion) & Anatomy %in% site_full_element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(site_full_element_key[i, `Element Label`], "dist", sep = "_"), paste(site_full_element_key[i, `Element Label`], "prox", sep = "_"))]
+  }
+  if(site_full_element_key[i, `Element Label`] %in% c("Tib")) {
+    full_assemblage[is.na(Element_Portion) & Anatomy %in% site_full_element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(site_full_element_key[i, `Element Label`], "prox", sep = "_"), paste(site_full_element_key[i, `Element Label`], "dist", sep = "_"))]
+  }
+}
+
+#Assign element portion numbers (matching original measured assemblage)
+#Unlike the modeled assemblage, we don't want to remove element portions without any observed measurements.
+#We do, however, want to keep the same Element_Portion labels for those element portions WITH observed measurements,
+#then add new labels for the unobserved element portions
+
+#This is again done by a join
+full_assemblage <- measured_assemblage[, .N, .(Element_Portion, Element)][, .(Element_Portion, Element)][full_assemblage, on = "Element"]
+
+#Defining the new Element_Portion labels will be done here alphabetically by "Element" label (among unobserved element portions)
+unobserved_element_portions <- full_assemblage[is.na(Element_Portion), .N, Element][order(Element), Element]
+for(i in 1:length(unobserved_element_portions)) {
+  full_assemblage[Element %in% unobserved_element_portions[i], Element_Portion := (measured_assemblage[, .N, Element_Portion][, .N] + i)]
+}
+
+#Get the Immature variable (potentially immature status based on fusion/tooth eruption)
+#This is only assigning Immature status for non-measured specimens
+#Measured specimens had their Immature status drawn from the site_mixmod_data records
+#(in case Immature values were changed through troubleshooting)
+full_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+full_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+full_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
+full_assemblage[is.na(Immature) & Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+
+#Codes for the additional elements (update for other lists of additional elements)
+full_assemblage[is.na(Immature) & Element %in% c("Pel"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+full_assemblage[is.na(Immature) & Element %in% c("Uln"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+
+####Exporting the files####
+#While the code has created objects that can be used within an R session, you may also want to save the files to upload later
+#These lines of code will export the data (to a sub-folder called "Data") as .CSV files that can be loaded by other scripts or
+#used in other programs (like Excel)
+write.csv(site_mixmod_data, file = "./Data/Site Mixture Model Data.csv", row.names = FALSE)
+write.csv(site_demographic_observations, file = "./Data/Site Demographic Observations.csv", row.names = FALSE)
+write.csv(measured_assemblage, file = "./Data/Site Measured Assemblage Data.csv", row.names = FALSE)
+write.csv(modeled_assemblage, file = "./Data/Site Modeled Assemblage Data.csv", row.names = FALSE)
+write.csv(full_assemblage, file = "./Data/Site Full Assemblage Data.csv", row.names = FALSE)

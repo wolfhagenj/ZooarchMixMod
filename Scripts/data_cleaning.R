@@ -316,6 +316,7 @@ full_assemblage[is.na(Immature) & Element %in% c("Uln"), Immature := as.numeric(
 #These lines of code will export the data (to a sub-folder called "Data") as .CSV files that can be loaded by other scripts or
 #used in other programs (like Excel)
 write.csv(site_mixmod_data, file = "./Data/Site Mixture Model Data.csv", row.names = FALSE)
+write.csv(site_demographic_observations, file = "./Data/Site Demographic Observations.csv", row.names = FALSE)
 write.csv(measured_assemblage, file = "./Data/Site Measured Assemblage Data.csv", row.names = FALSE)
 write.csv(modeled_assemblage, file = "./Data/Site Modeled Assemblage Data.csv", row.names = FALSE)
 write.csv(full_assemblage, file = "./Data/Site Full Assemblage Data.csv", row.names = FALSE)
