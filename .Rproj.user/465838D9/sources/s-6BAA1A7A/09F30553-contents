@@ -1405,7 +1405,7 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  seed = 1303894618, #change seed to generalize/if the data are changed
+#  seed = 1303894618, #change seed to generalize/if the data are changed
   adapt_delta = 0.90,
   max_treedepth = 15
 )
@@ -1460,7 +1460,7 @@ multisite_samples <- LSI_multisite_model$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.80,
-  seed = 1963899504,
+#  seed = 1963899504,
   max_treedepth = 15
 )
 multisite_stanfit <- rstan::read_stan_csv(multisite_samples$output_files())
@@ -2091,7 +2091,7 @@ pinarbasi_samples <- singlesite_mixture_stanmodel$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.95,
-  seed = 16374862,
+#  seed = 16374862,
   max_treedepth = 15
 )
 pinarbasi_stanfit <- rstan::read_stan_csv(pinarbasi_samples$output_files())
@@ -2129,8 +2129,8 @@ nw_anatolian_mixmod_standata <- list(
   Female_obs = nw_anatolian_demographic_observations[, N_Female],
   Female_obs_n = nw_anatolian_demographic_observations[, N_Sexable],
   #Prior distributions for hyper-parameters
-  prior_theta_raw_1 = c(-0.5, 2.5),
-  prior_theta_raw_2 = c(0, 2.5),
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
   prior_mu_female = c(-0.1, 0.1),
   prior_logdelta_immature = c(-3.5, 0.5),
   prior_logdelta_male = c(-2, 0.5),
@@ -2146,7 +2146,6 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.99,
-  seed = 1254841215,
   max_treedepth = 15
 )
 #
