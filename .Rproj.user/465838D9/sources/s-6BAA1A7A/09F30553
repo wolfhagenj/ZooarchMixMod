@@ -3,7 +3,7 @@
     "path": "~/GitHub/ZooarchMixMod/ZooarchMixtureMod.Rmd",
     "project_path": "ZooarchMixtureMod.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "3934804431",
     "contents": "",
     "dirty": false,
     "created": 1655999025518.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "203,0",
-        "scrollLine": "201"
+        "cursorPosition": "9,7",
+        "scrollLine": "0"
     },
     "folds": "",
-    "lastKnownWriteTime": 1656000074,
+    "lastKnownWriteTime": 1656009367,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1656000074954,
+    "last_content_update": 1656009367298,
     "read_only": false,
     "read_only_alternatives": []
 }

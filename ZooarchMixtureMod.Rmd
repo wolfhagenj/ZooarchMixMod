@@ -618,7 +618,7 @@ As in the average body size parameters, prior distributions for the size variabi
 
 ### *2.4 Multilevel Structure for Element Portions*
 
-The previous section described prior distributions that describe the *average* value for different mixture model parameters across all element portions. To create parameter estimates that are specific to different element portions, it is necessary to estimate the *variation* around these average values that different parameters can have among different element portions. The model uses a Multivariate Normal definition of the model parameters to allow for correlations between different parameters; effectively, the possibility that multiple model parameters will covary from element portion to element portion. To do this, each hyper-parameter has an associated $\sigma_{\operatorname{element}}$ parameter that describes inter-element variation in parameter values. The model uses a non-centered parameterization, wherein the Multivariate Normal distribution is centered at zero to calculate offsets, $\nu_{\operatorname{element}}$, that are added to the average hyper-parameters to calculate model parameters for each element portion. This definition provides computational stability and makes it more straightforward to incorporate other levels of multilevel structure (see *Section 2.5*).
+The previous section described prior distributions that describe the *average* value for different mixture model parameters across all element portions. To create parameter estimates that are specific to different element portions, it is necessary to estimate the *variation* around these average values that different parameters can have among different element portions. The model uses a Multivariate Normal definition of the model parameters to allow for correlations between different parameters; effectively, the possibility that multiple model parameters will covary from element portion to element portion. To do this, each hyper-parameter has an associated $\sigma_{\operatorname{element}}$ parameter that describes inter-element variation in parameter values. The model uses a non-centered parameterization, wherein the Multivariate Normal distribution is centered at zero to calculate offsets, $\nu_{\operatorname{element}}$, that are added to the average hyper-parameters to calculate model parameters for each element portion. This definition provides computational stability and makes it more straightforward to incorporate other levels of multilevel structure (see Section 2.5).
 
 *Equations for Defining Inter-Element Variation (Multilevel Modeling):*
 \begin{equation}
@@ -849,16 +849,16 @@ single_assemblage_demographic_observations <- data.table(Site = "Single Assembla
 
 #Multi-site simulation
 multisite_demographic_observations <- rbind(
-  data.table(Site = "Site 1", Site_No = 1, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
-  data.table(Site = "Site 2", Site_No = 2, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F)][Sex %in% "Female", .N], N_Sexable = 4),
-  data.table(Site = "Site 3", Site_No = 3, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
-  data.table(Site = "Site 4", Site_No = 4, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
-  data.table(Site = "Site 5", Site_No = 5, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 01", Site_No = 1, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 02", Site_No = 2, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F)][Sex %in% "Female", .N], N_Sexable = 4),
+  data.table(Site = "Site 03", Site_No = 3, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 04", Site_No = 4, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 05", Site_No = 5, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
   #20% immature, 70% female, 10% male
-  data.table(Site = "Site 6", Site_No = 6, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
-  data.table(Site = "Site 7", Site_No = 7, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 4),
-  data.table(Site = "Site 8", Site_No = 8, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
-  data.table(Site = "Site 9", Site_No = 9, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 06", Site_No = 6, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 07", Site_No = 7, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 4),
+  data.table(Site = "Site 08", Site_No = 8, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 09", Site_No = 9, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
   data.table(Site = "Site 10", Site_No = 10, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
   #5% immature, 35% female, 60% male
   data.table(Site = "Site 11", Site_No = 11, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
@@ -932,15 +932,15 @@ kbl(table_3[, .(Assemblage, Demographics, Size, Immature, Female, Male, Total)],
 
 For each model test, accuracy is evaluated in two ways. First, the posterior distributions of the mixture model hyper-parameters are compared to the known values for the population (“parametric accuracy”). The model hyper-parameters are first transformed into estimates of composition ($\pi$), body size ($\mu$) and size variability ($\sigma$) rather than the unconstrained variables that were modeled directly. These known values are calculated from the entire Shetland sheep population from which the assemblages were sampled [@popkin_etal_2012], including any manipulations of composition or size as described in Table 3. Second, the mixture model results are used to estimate the age and sex composition of the relevant measured and modeled assemblages—estimates of the number of immature, female, and male specimens for each element portion—that are compared to the actual composition of the assemblages (“compositional accuracy”). For the multi-assemblage model, compositional accuracy is evaluated both overall (all the assemblages combined) and for each assemblage individually. As described in Section 2.5, modeled assemblages are the measured and unmeasured specimens from the relevant element portions that are modeled with the mixture model. The measurement assemblage is considered a sample from this modeled assemblage, under the assumption that measurability—sufficient preservation of anatomical structures to be measured—is unrelated to the age and sex category of the specimen. Thus, just as the parametric accuracy is compared against the “population” parameters from which the measured assemblages were sampled, so to the compositional accuracy can be compared against the “modeled” assemblage that includes non-measured specimens sampled from the same underlying population.
 
-Modeled assemblages were created for the single-assemblage simulation and the multi-assemblage simulation by assuming that measured specimens represent 20% of the overall assemblage and sampling more specimens from the Shetland sheep population to create the remaining 80% of the assemblage. For example, in the single-assemblage simulation with `r simulation_summary$single_assemblage_n_specimens` measured specimens, this means sampling `r simulation_summary$single_assemblage_n_modeled_specimens` more specimens from the Shetland sheep population to create a total modeled assemblage of `r simulation_summary$single_assemblage_n_modeled_assemblage` specimens. Specimens could not be repeatedly sampled, though multiple specimens could be from the same individual. As described in *Section 2.5*, unmeasured specimens use the relevant $\pi$ parameters for the element portion. For the multisite simulation, this potentially includes element portions where there are no relevant measurements in the specific assemblage.
+Modeled assemblages were created for the single-assemblage simulation and the multi-assemblage simulation by assuming that measured specimens represent 20% of the overall assemblage and sampling more specimens from the Shetland sheep population to create the remaining 80% of the assemblage. For example, in the single-assemblage simulation with `r simulation_summary$single_assemblage_n_specimens` measured specimens, this means sampling `r simulation_summary$single_assemblage_n_modeled_specimens` more specimens from the Shetland sheep population to create a total modeled assemblage of `r simulation_summary$single_assemblage_n_modeled_assemblage` specimens. Specimens could not be repeatedly sampled, though multiple specimens could be from the same individual. As described in Section 2.5, unmeasured specimens use the relevant $\pi$ parameters for the element portion. For the multisite simulation, this potentially includes element portions where there are no relevant measurements in the specific assemblage.
 
-Because the "grand mean" parameters in the multisite simulation no longer represent the same thing as in the single assemblage model (see *Section 2.4.1*), the prior distributions must also be changed to reflect different expectations. Again, the goal of these prior distribution definitions is to prevent extreme overfitting so that parameter estimates are biologically feasible [@gelman_etal_2008]. In general, the centers of the distributions stayed the same but the uncertainty was increased, reflecting the fact that there's less certainty about what may be a biologically feasible value to describe multiple populations, especially if there is size variation expected between the assemblages.
+Because the "grand mean" parameters in the multisite simulation no longer represent the same thing as in the single assemblage model (see Section 2.4.1), the prior distributions must also be changed to reflect different expectations. Again, the goal of these prior distribution definitions is to prevent extreme overfitting so that parameter estimates are biologically feasible [@gelman_etal_2008]. In general, the centers of the distributions stayed the same but the uncertainty was increased, reflecting the fact that there's less certainty about what may be a biologically feasible value to describe multiple populations, especially if there is size variation expected between the assemblages.
 
 *Prior Distribution Definitions for the Multisite Simulation Model Hyper-Parameters*
 \begin{equation}
 \begin{split}
-\theta_1 & \sim \operatorname{Normal}(-0.5, 2.5) \\
-\theta_2 & \sim \operatorname{Normal}(0.0, 2.5) \\
+\theta_1 & \sim \operatorname{Normal}(-0.5, 1.5) \\
+\theta_2 & \sim \operatorname{Normal}(0.0, 1.5) \\
 \mu_2 & \sim \operatorname{Normal}(0.0, 0.2) \\
 \log \delta_1 & \sim \operatorname{Normal}(-3.5, 0.5) \\
 \log \delta_2 & \sim \operatorname{Normal}(-2.7, 0.5) \\
@@ -1350,8 +1350,8 @@ Because the model is a multisite model and deals with a different taxon than the
 *Prior Distribution Definitions for the Northwest Anatolian Cattle Model Hyper-Parameters*
 \begin{equation}
 \begin{split}
-\theta_1 & \sim \operatorname{Normal}(-0.5, 2.5) \\
-\theta_2 & \sim \operatorname{Normal}(0.0, 2.5) \\
+\theta_1 & \sim \operatorname{Normal}(-0.5, 1.5) \\
+\theta_2 & \sim \operatorname{Normal}(0.0, 1.5) \\
 \mu_2 & \sim \operatorname{Normal}(-0.1, 0.1) \\
 \log \delta_1 & \sim \operatorname{Normal}(-3.5, 0.5) \\
 \log \delta_2 & \sim \operatorname{Normal}(-2.0, 0.5) \\
@@ -1405,7 +1405,7 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  seed = 1420839979, #change seed to generalize/if the data are changed
+  seed = 1303894618, #change seed to generalize/if the data are changed
   adapt_delta = 0.90,
   max_treedepth = 15
 )
@@ -1444,8 +1444,8 @@ multisite_mixmod_standata <- list(
   Female_obs = multisite_demographic_observations[, N_Female],
   Female_obs_n = multisite_demographic_observations[, N_Sexable],
   #Prior distributions for hyper-parameters
-  prior_theta_raw_1 = c(-0.5, 2.5),
-  prior_theta_raw_2 = c(0, 2.5),
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
   prior_mu_female = c(0, 0.2),
   prior_logdelta_immature = c(-3.5, 0.5),
   prior_logdelta_male = c(-2.7, 0.5),
@@ -1460,7 +1460,7 @@ multisite_samples <- LSI_multisite_model$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.80,
-  seed = 409913167,
+  seed = 1963899504,
   max_treedepth = 15
 )
 multisite_stanfit <- rstan::read_stan_csv(multisite_samples$output_files())
@@ -2027,13 +2027,13 @@ The prior distribution definitions for the size offsets ($\delta_1$ and $\delta_
 knitr::include_graphics("./Output/Figures/figure_5.png")
 ```
 
-Parametric accuracy for the simulations relies on relating the posterior distributions for “assemblage-level” parameters to the known values for the overall Shetland sheep population (including any relevant modifications). Ideally, the 80% and 95% credible intervals from these posterior distributions should contain the true population value 80% and 95% of the time, respectively. An overfit model would contain the population value less frequently than the stated interval, producing false confidence in the applicability of the results. An underfit model, by contrast, would contain the population value more frequently than the stated interval, producing results that are too conservative. The single-assemblage simulation creates well-calibrated estimates: `r simulation_parameter_accuracy$single_assemblage_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$single_assemblage_95CI` of the 95% credible intervals from the posterior distributions of the population parameters contain the true value of the Shetland sheep population. The multisite simulation also produces relatively well-calibrated estimates for assemblage-level parameters, with `r simulation_parameter_accuracy$multisite_site_parameter_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$multisite_site_parameter_95CI` of the 95% credible intervals from the posterior distributions of the (site-level) population parameters containing the true values of the Shetland sheep population with relevant modifications.
+Parametric accuracy for the simulations relies on relating the posterior distributions for “assemblage-level” parameters to the known values for the overall Shetland sheep population (including any relevant modifications). Ideally, the 80% and 95% credible intervals from these posterior distributions should contain the true population value 80% and 95% of the time, respectively. An overfit model would contain the population value less frequently than the stated interval, producing false confidence in the applicability of the results. An underfit model, by contrast, would contain the population value more frequently than the stated interval, producing results that are too conservative. The single-assemblage simulation produces overfit results: `r simulation_parameter_accuracy$single_assemblage_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$single_assemblage_95CI` of the 95% credible intervals from the posterior distributions of the population parameters contain the true value of the Shetland sheep population. The multisite simulation produces relatively well-calibrated estimates for assemblage-level parameters, with `r simulation_parameter_accuracy$multisite_site_parameter_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$multisite_site_parameter_95CI` of the 95% credible intervals from the posterior distributions of the (site-level) population parameters containing the true values of the Shetland sheep population with relevant modifications.
 
 ```{r figure_6, echo = FALSE, message = FALSE, warning = FALSE, fig.align = "center", out.width = "\\textwidth", fig.cap = "Posterior Distributions of Model Parameters for the Simulated Single Assemblage with Relevant Population Parameter Values"}
 knitr::include_graphics("./Output/Figures/figure_6.png")
 ```
 
-Figure 6 shows the posterior distributions of the population parameters for the single-assemblage model, highlighting the 80% and 95% credible intervals and the corresponding value from the overall Shetland sheep assemblage (“Population Value”). The single assemblage model estimates all of the model hyper-parameters relatively accurately, though does tend to underestimate within-group size variability ($\sigma_{1,2,3}$). The multisite model is also accurate, if conservative, at estimating the average body size for the three groups at each site, with `r simulation_parameter_accuracy$multisite_site_mu_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$multisite_site_mu_95CI` of the 95% credible intervals for the posterior distributions of the site-specific model parameters containing the true population values (Figure 7). Body size estimates ($\mu_{1,2,3}$) tend to be extremely accurate, while proportions may not be accurate for extremely low populations values (e.g., immature animals in Sites 11-15).
+Figure 6 shows the posterior distributions of the population parameters for the single-assemblage model, highlighting the 80% and 95% credible intervals and the corresponding value from the overall Shetland sheep assemblage (“Population Value”). The single assemblage model estimates all of the model hyper-parameters relatively accurately, though does tend to underestimate within-group size variability ($\sigma_{1,2,3}$). The multisite model severely overfits when estimating the average body size for the three groups at each site, with `r simulation_parameter_accuracy$multisite_site_mu_80CI` of the 80% credible intervals and `r simulation_parameter_accuracy$multisite_site_mu_95CI` of the 95% credible intervals for the posterior distributions of the site-specific model parameters containing the true population values (Figure 7). Size variability ($\sigma_{1,2,3}$) is estimated relatively well, though again tends to underestimate size variability, while proportions may not be accurate for extremely low populations values (e.g., immature animals in Sites 11-15).
 
 ```{r figure_7, echo = FALSE, message = FALSE, warning = FALSE, fig.align = "center", out.width = "\\textwidth", fig.cap = "Posterior Distributions of Model Parameters for the Simulated Multisite Assemblage with Relevant Population Parameter Values"}
 knitr::include_graphics("./Output/Figures/figure_7.png")
@@ -2090,8 +2090,8 @@ pinarbasi_samples <- singlesite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  adapt_delta = 0.90,
-  seed = 626436421,
+  adapt_delta = 0.95,
+  seed = 16374862,
   max_treedepth = 15
 )
 pinarbasi_stanfit <- rstan::read_stan_csv(pinarbasi_samples$output_files())
@@ -2909,11 +2909,11 @@ knitr::include_graphics("./Output/Figures/figure_s4.png")
 ```{r making figure S5 (multisite prior-posterior comparison), include = FALSE, eval = TRUE}
 #Figure S5: prior and posterior comparison of multisite simulation hyper-parameters
 #Collect the prior and posterior estimates
-multisite_p_immature_prior_samples <- boot::inv.logit(rnorm(4000, -0.5, 2.5) + log(0.5))
+multisite_p_immature_prior_samples <- boot::inv.logit(rnorm(4000, -0.5, 1.5) + log(0.5))
 multisite_p_immature_posterior_samples <- multisite_post$p_immature
 multisite_p_immature_priorposterior_data <- data.table(quantity = rep(c("Prior", "Posterior"), each = 4000), value = c(multisite_p_immature_prior_samples, multisite_p_immature_posterior_samples))
 #
-multisite_sex_ratio_prior_samples <- boot::inv.logit(rnorm(4000, 0, 2.5))
+multisite_sex_ratio_prior_samples <- boot::inv.logit(rnorm(4000, 0, 1.5))
 multisite_sex_ratio_posterior_samples <- multisite_post$theta_female
 multisite_sex_ratio_priorposterior_data <- data.table(quantity = rep(c("Prior", "Posterior"), each = 4000), value = c(multisite_sex_ratio_prior_samples, multisite_sex_ratio_posterior_samples))
 #
@@ -3187,11 +3187,11 @@ dev.off()
 ```{r making figure S7 (NW Anatolian prior-posterior comparison), include = FALSE, eval = TRUE}
 #Figure S5: prior and posterior comparison of NW Anatolian cattle model hyper-parameters
 #Collect the prior and posterior estimates
-nw_anatolian_p_immature_prior_samples <- boot::inv.logit(rnorm(4000, -0.5, 2.5) + log(0.5))
+nw_anatolian_p_immature_prior_samples <- boot::inv.logit(rnorm(4000, -0.5, 1.5) + log(0.5))
 nw_anatolian_p_immature_posterior_samples <- nw_anatolian_post$p_immature
 nw_anatolian_p_immature_priorposterior_data <- data.table(quantity = rep(c("Prior", "Posterior"), each = 4000), value = c(nw_anatolian_p_immature_prior_samples, nw_anatolian_p_immature_posterior_samples))
 #
-nw_anatolian_sex_ratio_prior_samples <- boot::inv.logit(rnorm(4000, 0, 2.5))
+nw_anatolian_sex_ratio_prior_samples <- boot::inv.logit(rnorm(4000, 0, 1.5))
 nw_anatolian_sex_ratio_posterior_samples <- nw_anatolian_post$theta_female
 nw_anatolian_sex_ratio_priorposterior_data <- data.table(quantity = rep(c("Prior", "Posterior"), each = 4000), value = c(nw_anatolian_sex_ratio_prior_samples, nw_anatolian_sex_ratio_posterior_samples))
 #

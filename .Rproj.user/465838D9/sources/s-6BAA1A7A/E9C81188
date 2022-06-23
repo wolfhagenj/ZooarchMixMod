@@ -3,7 +3,7 @@
     "path": "~/GitHub/ZooarchMixMod/Scripts/single_assemblage_mixmod.R",
     "project_path": "Scripts/single_assemblage_mixmod.R",
     "type": "r_source",
-    "hash": "135969850",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1655998839047.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "15,23",
-        "scrollLine": "0"
+        "cursorPosition": "72,20",
+        "scrollLine": "48"
     },
     "folds": "",
-    "lastKnownWriteTime": 1656000087,
+    "lastKnownWriteTime": 1656010522,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1656000087636,
+    "last_content_update": 1656010522681,
     "read_only": false,
     "read_only_alternatives": []
 }
