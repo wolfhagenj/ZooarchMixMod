@@ -1405,7 +1405,7 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-#  seed = 1303894618, #change seed to generalize/if the data are changed
+  seed = 1303894618, #change seed to generalize/if the data are changed
   adapt_delta = 0.90,
   max_treedepth = 15
 )
@@ -1460,7 +1460,7 @@ multisite_samples <- LSI_multisite_model$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.80,
-#  seed = 1963899504,
+  seed = 1963899504,
   max_treedepth = 15
 )
 multisite_stanfit <- rstan::read_stan_csv(multisite_samples$output_files())
@@ -2091,7 +2091,7 @@ pinarbasi_samples <- singlesite_mixture_stanmodel$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.95,
-#  seed = 16374862,
+  seed = 16374862,
   max_treedepth = 15
 )
 pinarbasi_stanfit <- rstan::read_stan_csv(pinarbasi_samples$output_files())
@@ -2146,6 +2146,7 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.99,
+  seed = 192536027,
   max_treedepth = 15
 )
 #
