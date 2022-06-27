@@ -24,8 +24,15 @@ library("rstan")
 ####Import the data (if necessary)####
 #Import mixture model data. This script uses the results of the "data_cleaning.R" as an example
 #Alternatively, you could run the script in the same R environment earlier so that the objects exist
+#If you do this, you need to use the following lines (uncommented)
+#single_assemblage_mixmod_data <- site_mixmod_data
+#single_assemblage_demographic_observations <- site_demographic_observations
 single_assemblage_mixmod_data <- fread("./Data/Site Mixture Model Data.csv")
 single_assemblage_demographic_observations <- fread("./Data/Site Demographic Observations.csv")
+
+#Add Site_No category to mixmod data (used in defining the immature proportions)
+#This variable isn't included in the data_cleaning script
+single_assemblage_mixmod_data[, Site_No := 1]
 
 ####Set up the data for the Stan model####
 #Stan requires the data set up as a list object
@@ -72,8 +79,53 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   adapt_delta = 0.80,
   max_treedepth = 15
 )
-#IMPORTANT: Divergent transitions require rerunning the model, increase the adapt_delta argument
+#IMPORTANT: Warnings about divergent transitions typically requires rerunning the model
+#Increase the adapt_delta argument to address the issue
 #see https://mc-stan.org/misc/warnings for more details
 
+####Evaluating model fit####
+#There are no hard-and-fast rules to determine whether your model has fit correctly (or converged).
+#You need multiple chains to evaluate this: these are separate runs of the model at different starting
+#points. Ideally, you're getting the same results regardless of where you started.
+#See https://mc-stan.org/rstan/reference/Rhat.html for more information
+#The variables you can examine to argue that you have a correctly-fit model are:
+#rhat: compares variation between and within chains; values should be near 1.00
+#ess_bulk: estimates sample size (of the posterior draws) using rank normalized draws. Can be higher than
+#the actual number of posterior draws; this roughly shows how many "effectively" independent samples you have
+#to produce your mean and median estimates
+#ess_tail: the same process, though focused on the quantile estimates (q5, q95) and variance.
+#See also https://betanalpha.github.io/assets/case_studies/rstan_workflow.html for more information
+
+#These are the names of the model hyper-parameters that were given user-defined prior distributions
+single_assemblage_samples$summary(c("grand_theta_raw",
+                                    "grand_mu_female", "grand_logdelta_immature", "grand_logdelta_male",
+                                    "grand_logsigma_immature", "grand_logsigma_female", "grand_logsigma_male"))
+#This displays an estimate of the parameter for each element portion
+single_assemblage_samples$summary(c("mu_female"))
+
+#Beyond summaries, it is also worth looking at trace plots that overlay each chain on top of one another
+#Ideally, all of the chains should overlap each other and there shouldn't be any directionality across the
+#length of the chains. This is sometimes called looking for "fuzzy caterpillars".
+#To do this, first save the model fit into an rstan stanfit object
 single_assemblage_stanfit <- rstan::read_stan_csv(single_assemblage_samples$output_files())
+
+#Then use the convenient plotting function for a defined variable
+traceplot(single_assemblage_stanfit, c("grand_theta_raw",
+                                       "grand_mu_female", "grand_logdelta_immature", "grand_logdelta_male",
+                                       "grand_logsigma_immature", "grand_logsigma_female", "grand_logsigma_male"))
+#
+traceplot(single_assemblage_stanfit, "mu_female")
+
+####Exporting the posterior distributions####
+#For posterior analysis, you'll want to have the exact posterior estimates of the parameter values.
+#These can be extracted from the stanfit object
 single_assemblage_post <- extract(single_assemblage_stanfit)
+
+#This object can then be saved to be uploaded later or used directly in another script as an open R object.
+
+#IMPORTANT: To ensure reproducibility, you can also extract the random seed used to generate your model
+#and then place the seed in the samples call using the argument
+#seed = [whatever number you were given]
+get_seed(single_assemblage_stanfit)
+#This would provide strict reproducibility, as you would get the exact same posterior samples.
+#Overall results, however, shouldn't depend on the specific seed you use.
