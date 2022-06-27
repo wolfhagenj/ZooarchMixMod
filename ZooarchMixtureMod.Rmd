@@ -1543,7 +1543,7 @@ multisite_site_mu_95CI <- sum(c(
 ```
 
 ```{r compositional analysis for simulated assemblages, include = FALSE, eval = TRUE}
-#equations to simulate a specimen as immature/female/male and count up the composition
+#functions to simulate a specimen as immature/female/male and count up the composition
 ifm_sample <- function(p_immature, p_female, p_male) {
   sample(c("Immature", "Female", "Male"), 1, replace = T, prob = c(p_immature, p_female, p_male))
 }

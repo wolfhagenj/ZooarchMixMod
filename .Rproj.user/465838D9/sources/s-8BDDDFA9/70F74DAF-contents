@@ -229,7 +229,7 @@ modeled_assemblage <- measured_assemblage[, .N, .(Element_Portion, Element)][, .
 #Measured specimens had their Immature status drawn from the site_mixmod_data records
 #(in case Immature values were changed through troubleshooting)
 modeled_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
-modeled_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+modeled_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1", "PH2"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
 modeled_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
 modeled_assemblage[is.na(Immature) & Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
 
@@ -303,7 +303,7 @@ for(i in 1:length(unobserved_element_portions)) {
 #Measured specimens had their Immature status drawn from the site_mixmod_data records
 #(in case Immature values were changed through troubleshooting)
 full_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
-full_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+full_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1", "PH2"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
 full_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
 full_assemblage[is.na(Immature) & Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
 

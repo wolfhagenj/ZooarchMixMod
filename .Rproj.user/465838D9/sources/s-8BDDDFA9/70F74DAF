@@ -3,7 +3,7 @@
     "path": "~/GitHub/ZooarchMixMod/Scripts/data_cleaning.R",
     "project_path": "Scripts/data_cleaning.R",
     "type": "r_source",
-    "hash": "0",
+    "hash": "2716459276",
     "contents": "",
     "dirty": false,
     "created": 1656340199562.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "319,0",
-        "scrollLine": "295"
+        "cursorPosition": "232,0",
+        "scrollLine": "219"
     },
     "folds": "",
-    "lastKnownWriteTime": 1656336368,
+    "lastKnownWriteTime": 1656356575,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1656336368,
+    "last_content_update": 1656356575196,
     "read_only": false,
     "read_only_alternatives": []
 }
