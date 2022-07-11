@@ -1,0 +1,924 @@
+####Script to run each section (making .svg versions of the figures) and excel tables####
+#Libraries#
+library("Cairo")
+library("cmdstanr")
+library("data.table")
+library("doParallel")
+library("ggdist")
+library("ggplot2")
+library("ggpubr")
+library("ggrepel")
+library("kableExtra")
+library("knitr")
+library("parallel")
+library("rnaturalearth")
+library("rnaturalearthdata")
+library("rstan")
+library("sf")
+library("zoolog")
+#
+
+####Table 1: Key Definitions####
+definitions <- data.table(
+  Term = c("Element Portion", "Measurement Set", "Measured Assemblage", "Modeled Assemblage", "Full Assemblage"),
+  Definition = c('A complete or partial skeletal element defined by the zooarchaeologist, used as the foundation of the multilevel model (e.g., "distal humerus"). Model produces parameter estimates for all defined element portions, so element portions must be non-overlapping. Analogous to "skeletal part type" in Breslawski (2022).',
+                 'Specific type of observed measurement (e.g., "humerus distal breadth").',
+                 'Assemblage of measured specimens from a defined number of element portions of a specific taxon.',
+                 'Assemblage of specimens from a defined number of element portions of a specific taxon. Includes measured and non-measured specimens, though all element portions must have some number of measured specimens. Measurability is assumed to be effectively random (i.e., unrelated to whether the specimen came from an immature, female, or male individual).',
+                 'Assemblage of specimens from a defined number of element portions of a specific taxon. Includes element portions that do not have any observed measurements. Measurability is assumed to be effectively random (i.e., unrelated to whether a specimen came from an immature, female, or male individual).')
+)
+write.csv(definitions, file = "./Output/Tables/Table 1 - Definitions.csv", row.names = F)
+
+####Table 2: simulation measurements####
+simulation_measurements <- sheep_standard_animal[Measurement %in% sheep_mixmod_data[, .N, Measurement][, Measurement], .(Element = EL, Measurement = Measure)]
+write.csv(simulation_measurements, file = "./Output/Tables/Table 2 - Simulation Measurements.csv", row.names = F)
+
+####Simulations####
+set.seed(1234567890)
+
+sheep_data <- fread("./Data/1-s2.0-S0305440312000301-mmc1.csv", nrows = 356) #accessible from https://doi.org/10.1016/j.jas.2012.01.018 supplementary table, resaved as a .CSV
+
+#Make variable for immature animals (`Days at Death` <= 365), female animals (not-immature), and male/castrated animals (not-immature)
+sheep_data[, is.Immature := ifelse(`Days at Death` <= 365, 1, 0)]
+sheep_data[, is.Female := ifelse(`Days at Death` > 365 & Sex %in% "Female", 1, 0)]
+sheep_data[, is.Male := ifelse(`Days at Death` > 365 & Sex %in% c("Castrate", "Male"), 1, 0)]
+
+#Reframe the sheep data to be set in a long format
+sheep_longdata <- melt(sheep_data, id.vars = c("Accession  no", "Sex", "is.Immature", "is.Female", "is.Male", "Sca_coracoid_fus", "Hum_prox_fus", "Hum_dist_fus", "Rad_prox_fus", "Rad_dist_fus", "Mtc_dist_fus", "Pel_acetabulum_fus", "Fem_caput_fus", "Fem_dist_fus", "Tib_prox_fus", "Tib_dist_fus", "Mtt_dist_fus", "Cal_prox_fus"), measure.vars = names(sheep_data[, Sca_GLP:Cal_GDde]), variable.name = "Measurement", value.name = "Measurement_value")
+sheep_longdata[, Element := tstrsplit(Measurement, "_")[1]]
+
+#Get the standard animal from zoolog
+sheep_standard_animal <- data.table(referencesDatabase$`Ovis orientalis`$Uerpmann)
+
+#Keep only limb breadth bone measurements for the mixture model
+sheep_mixmod_data <- sheep_longdata[Measurement %in% c("Sca_GLP", "Hum_Bd", "Hum_BT", "Rad_Bp", "Rad_Bd", "Mtc_Bp", "Mtc_BFd", "Fem_Bd", "Tib_Bd", "Ast_Bd", "Mtt_Bp", "Mtt_BFd")]
+
+#Rename standard animal measurements to match the names in the dataset
+sheep_standard_animal[EL %in% "Scapula", c("Element", "Measurement") := .("Sca", paste("Sca", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Humerus", c("Element", "Measurement") := .("Hum", paste("Hum", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Radius", c("Element", "Measurement") := .("Rad", paste("Rad", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Metacarpus", c("Element", "Measurement") := .("Mtc", paste("Mtc", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Femur", c("Element", "Measurement") := .("Fem", paste("Fem", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Tibia", c("Element", "Measurement") := .("Tib", paste("Tib", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Astragalus", c("Element", "Measurement") := .("Ast", paste("Ast", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Metatarsus", c("Element", "Measurement") := .("Mtt", paste("Mtt", Measure, sep = "_"))]
+
+#Rename some measurement name mismatches
+sheep_mixmod_data[Measurement %in% "Mtc_BFd", Measurement := "Mtc_Bd"]
+sheep_mixmod_data[Measurement %in% "Mtt_BFd", Measurement := "Mtt_Bd"]
+
+#Join the standard animal reference to the dataset (allows for easier identification of relevant standard measurement)
+sheep_mixmod_data <- sheep_mixmod_data[sheep_standard_animal[, .(Measurement, Reference_value = Standard)], on = "Measurement"][!is.na(`Accession  no`)]
+
+#Create "element portion" and "measurement set" numbers for the model (needs numeric labels)
+#note that, by default, these are ordered alphabetically. Can also assign specific orders if desirable
+sheep_mixmod_data[, c("Measurement_Set", "Element_Portion") := .(as.numeric(as.factor(Measurement)), as.numeric(as.factor(Element)))]
+
+#Create "specimen" labels to link meausrements from the same bone specimen (model needs numeric labels)
+sheep_mixmod_data[, "Specimen_No" := as.numeric(as.factor(paste(`Accession  no`, Element, sep = "_")))]
+sheep_mixmod_data[, "Individual_No" := as.numeric(as.factor(`Accession  no`))]
+
+#Immature: identify whether specimens COULD be immature based on element portion and fusion status, if relevant
+sheep_mixmod_data[Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+sheep_mixmod_data[Element %in% c("Hum"), Immature := as.numeric(Hum_prox_fus %in% c("fu", "fg") == F)]
+sheep_mixmod_data[Element %in% "Rad", Immature := as.numeric(Rad_dist_fus %in% c("fu", "fg") == F)]
+sheep_mixmod_data[Element %in% "Mtc", Immature := as.numeric(Mtc_dist_fus %in% c("fu", "fg") == F)]
+sheep_mixmod_data[Element %in% "Fem", Immature := as.numeric(Fem_dist_fus %in% c("fu", "fg") == F)]
+sheep_mixmod_data[Element %in% "Tib", Immature := as.numeric(Tib_prox_fus %in% c("fu", "fg") == F)]
+sheep_mixmod_data[Element %in% "Mtt", Immature := as.numeric(Mtt_dist_fus %in% c("fu", "fg") == F)]
+
+#Group: category for immature vs female vs male/castrate (for checking accuracy)
+sheep_mixmod_data[, Group := ifelse(is.Immature %in% 1, "Immature", ifelse(is.Female %in% 1, "Female", ifelse(is.Male %in% 1, "Male", NA)))]
+#Demographic information: collecting fusion data on proximal and middle phalanges and sex data on fused pelves
+sheep_phx_fusion <- melt(sheep_data[, .(`Accession  no`, is.Immature, is.Female, is.Male, Pph_fore_int_fus, Pph_fore_ext_fus, Pph_dist_int_fus, Pph_dist_ext_fus, Mph_fore_int_fus, Mph_fore_ext_fus, Mph_dist_int_fus, Mph_dist_ext_fus)], id.vars = c("Accession  no", "is.Immature", "is.Female", "is.Male"), variable.name = "Phalanx", value.name = "Fusion")[Fusion %in% "na" == F]
+sheep_phx_fusion[, Element := ifelse(grepl("Pph", Phalanx), "PH1", "PH2")]
+
+sheep_pelvis_sex <- sheep_data[Pel_acetabulum_fus %in% "fu", .(`Accession  no`, is.Immature, is.Female, is.Male)][is.Immature %in% 0, .(`Accession  no`, Sex = ifelse(is.Female %in% 1, "Female", ifelse(is.Male %in% 1, "Male", NA)))]
+#
+#Single assemblage simulation: 150 measured element portions, probabilities remain the same as the underlying population
+single_assemblage_mixmod_data <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 150, replace = F)]
+#Re-assign numeric codes for element portions, measurement sets, and individual specimens (to prevent mismatches/overlap)
+single_assemblage_mixmod_data[, Measurement_Set := as.numeric(as.factor(Measurement))]
+single_assemblage_mixmod_data[, Element_Portion := as.numeric(as.factor(Element))]
+single_assemblage_mixmod_data[, Original_Specimen_No := Specimen_No] #allows the creation of modeled assemblages without resampling
+single_assemblage_mixmod_data[, Specimen_No := as.numeric(as.factor(Specimen_No))]
+single_assemblage_mixmod_data[, Site_No := 1]
+
+#Multi-site simulation: 15 sites, varying sample size, expected composition, and body size manipulations
+#Sites 1-5: no variation in composition to the underlying population
+#Sites 6-10: 20% immature, 70% female, 10% male
+#Sites 11-15: 5% immature, 35% female, 60% male
+#Size variation in Sites 3-5, 8-10, and 13-15
+#Sample sizes: N = 10 element portions in Sites 2, 7, and 12 (N = 30 element portions otherwise)
+
+#straight from the data, 30 measured specimens
+site_01 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F)]
+#straight from the data, 10 measured specimens
+site_02 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 10, replace = F)]
+#30 measured specimens, increase size
+site_03 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F)]
+site_03[, Measurement_value := Measurement_value * 1.20]
+#30 measured specimens, decrease size
+site_04 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F)]
+site_04[, Measurement_value := Measurement_value * 0.80]
+#30 measured specimens, increase sexual dimorphism
+site_05 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F)]
+site_05[is.Male %in% 1, Measurement_value := Measurement_value * 1.20]
+
+#20% immature, 70% female, 10% male
+#have to adjust probabilities of choosing based on underlying proportions of the dataset
+#20% immature, 70% female, 10% male; 30 measured specimens
+site_06 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])]
+#20% immature, 70% female, 10% male; 10 measured specimens
+site_07 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 10, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])]
+#20% immature, 70% female, 10% male; 30 measured specimens, increased size
+site_08 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])]
+site_08[, Measurement_value := Measurement_value * 1.20]
+#20% immature, 70% female, 10% male; 30 measured specimens, decreased size
+site_09 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])]
+site_09[, Measurement_value := Measurement_value * 0.80]
+#20% immature, 70% female, 10% male; 30 measured specimens, increased sexual dimorphism
+site_10 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])]
+site_10[is.Male %in% 1, Measurement_value := Measurement_value * 1.20]
+
+#5% immature, 35% female, 60% male
+#have to adjust probabilities of choosing based on underlying proportions of the dataset
+#5% immature, 35% female, 60% male; 30 measured specimens
+site_11 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])]
+#5% immature, 35% female, 60% male; 10 measured specimens
+site_12 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 10, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])]
+#5% immature, 35% female, 60% male; 30 measured specimens, increased size
+site_13 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])]
+site_13[, Measurement_value := Measurement_value * 1.20]
+#5% immature, 35% female, 60% male; 30 measured specimens, decreased size
+site_14 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])]
+site_14[, Measurement_value := Measurement_value * 0.80]
+#5% immature, 35% female, 60% male; 30 measured specimens, increased sexual dimorphism
+site_15 <- sheep_mixmod_data[Specimen_No %in% sample(1:sheep_mixmod_data[, .N, Specimen_No][, .N], 30, replace = F, prob = sheep_mixmod_data[, .N, .(Specimen_No, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])]
+site_15[is.Male %in% 1, Measurement_value := Measurement_value * 1.20]
+
+#Bring all the assemblages together
+multisite_mixmod_data <- rbind(data.table(Site_No = 1, site_01),
+                               data.table(Site_No = 2, site_02),
+                               data.table(Site_No = 3, site_03),
+                               data.table(Site_No = 4, site_04),
+                               data.table(Site_No = 5, site_05),
+                               data.table(Site_No = 6, site_06),
+                               data.table(Site_No = 7, site_07),
+                               data.table(Site_No = 8, site_08),
+                               data.table(Site_No = 9, site_09),
+                               data.table(Site_No = 10, site_10),
+                               data.table(Site_No = 11, site_11),
+                               data.table(Site_No = 12, site_12),
+                               data.table(Site_No = 13, site_13),
+                               data.table(Site_No = 14, site_14),
+                               data.table(Site_No = 15, site_15))
+
+#Re-assign numeric codes for element portions, measurement sets, and individual specimens (to prevent mismatches/overlap)
+multisite_mixmod_data[, Measurement_Set := as.numeric(as.factor(Measurement))]
+multisite_mixmod_data[, Element_Portion := as.numeric(as.factor(Element))]
+multisite_mixmod_data[, Original_Specimen_No := Specimen_No] #allows the creation of modeled assemblages without resampling the measured specimens
+multisite_mixmod_data[, Specimen_No := as.numeric(as.factor(paste(Site_No, Specimen_No, sep = ".")))]
+
+##Demographic observations for the simulations: simulate observations from sheep_phx_fusion and sheep_pelvis_sex
+#Single assemblage simulation
+single_assemblage_demographic_observations <- data.table(Site = "Single Assemblage", Site_No = 1, N_Unfused = sheep_phx_fusion[sample(1:.N, 50)][Fusion %in% c("u", "fo"), .N], N_Ageable = 50, N_Female = sheep_pelvis_sex[sample(1:.N, 15)][Sex %in% "Female", .N], N_Sexable = 15)
+
+#Multi-site simulation
+multisite_demographic_observations <- rbind(
+  data.table(Site = "Site 1", Site_No = 1, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 2", Site_No = 2, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F)][Sex %in% "Female", .N], N_Sexable = 4),
+  data.table(Site = "Site 3", Site_No = 3, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 4", Site_No = 4, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 5", Site_No = 5, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F)][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F)][Sex %in% "Female", .N], N_Sexable = 8),
+  #20% immature, 70% female, 10% male
+  data.table(Site = "Site 6", Site_No = 6, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 7", Site_No = 7, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 4),
+  data.table(Site = "Site 8", Site_No = 8, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 9", Site_No = 9, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 10", Site_No = 10, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.2 / (384 / 2752), ifelse(is.Female %in% 1, 0.7 / (1312 / 2752), ifelse(is.Male %in% 1, 0.1 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.7 / 0.8) / (164 / 308), ifelse(Sex %in% "Male", (0.1 / 0.8) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  #5% immature, 35% female, 60% male
+  data.table(Site = "Site 11", Site_No = 11, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 12", Site_No = 12, N_Unfused = sheep_phx_fusion[sample(1:.N, 10, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 15, N_Female = sheep_pelvis_sex[sample(1:.N, 4, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 4),
+  data.table(Site = "Site 13", Site_No = 13, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 14", Site_No = 14, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8),
+  data.table(Site = "Site 15", Site_No = 15, N_Unfused = sheep_phx_fusion[sample(1:.N, 30, replace = F, prob = ifelse(is.Immature %in% 1, 0.05 / (384 / 2752), ifelse(is.Female %in% 1, 0.35 / (1312 / 2752), ifelse(is.Male %in% 1, 0.60 / (1056 / 2752), NA))))][Fusion %in% c("u", "fo"), .N], N_Ageable = 30, N_Female = sheep_pelvis_sex[sample(1:.N, 8, replace = F, prob = ifelse(Sex %in% "Female", (0.35 / 0.95) / (164 / 308), ifelse(Sex %in% "Male", (0.60 / 0.95) / (144 / 308), NA)))][Sex %in% "Female", .N], N_Sexable = 8)
+)
+
+#Simulate the modeled assemblages
+#single assemblage simulation
+single_measured_assemblage <- single_assemblage_mixmod_data[, .N, .(Individual_No, Specimen_No, Original_Specimen_No, Element, Element_Portion, Immature, Group, Site_No)]
+single_modeled_assemblage <- rbind(single_measured_assemblage,
+                                   sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% single_measured_assemblage[, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][, Specimen_No], 600, replace = F)][, .(Specimen_No = NA, Site_No = 1, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)])
+
+#multisite assemblage simulation
+multisite_measured_assemblage <- multisite_mixmod_data[, .N, .(Individual_No, Specimen_No, Original_Specimen_No, Element, Element_Portion, Immature, Group, Site_No)]
+multisite_modeled_assemblage <- rbind(multisite_measured_assemblage,
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 1, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F)][, .(Specimen_No = NA, Site_No = 1, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 2, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 40, replace = F)][, .(Specimen_No = NA, Site_No = 2, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 3, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F)][, .(Specimen_No = NA, Site_No = 3, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 4, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F)][, .(Specimen_No = NA, Site_No = 4, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 5, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F)][, .(Specimen_No = NA, Site_No = 5, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      #Sites 6-10: 20% immature, 70% female, 10% male
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 6, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 6, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 6, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 7, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 40, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 7, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 7, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 8, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 8, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 8, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 9, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 9, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 9, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 10, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 10, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.20 / (384 / 2848), ifelse(Group %in% "Female", 0.70 / (1312 / 2848), ifelse(Group %in% "Male", 0.10 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 10, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      #Sites 11-15: 5% immature, 35% female, 60% male
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 11, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 11, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 11, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 12, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 40, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 12, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 12, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 13, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 13, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 13, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 14, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 14, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 14, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)],
+                                      sheep_mixmod_data[Specimen_No %in% sample(sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 15, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion)][order(Specimen_No), Specimen_No], 120, replace = F, prob = sheep_mixmod_data[Specimen_No %in% multisite_measured_assemblage[Site_No %in% 15, Original_Specimen_No] == F, .N, .(Individual_No, Specimen_No, Element_Portion, Group)][order(Specimen_No), ifelse(Group %in% "Immature", 0.05 / (384 / 2848), ifelse(Group %in% "Female", 0.35 / (1312 / 2848), ifelse(Group %in% "Male", 0.60 / (1152 / 2848), NA)))])][, .(Specimen_No = NA, Site_No = 15, .N), .(Individual_No, Original_Specimen_No = Specimen_No, Element, Element_Portion, Immature, Group)])
+#
+#Summarize the simulations
+simulation_summary <- list(
+  single_assemblage_n_specimens = single_assemblage_mixmod_data[, .N, Specimen_No][, .N],
+  single_assemblage_n_measurements = single_assemblage_mixmod_data[, .N],
+  single_assemblage_n_indivudals = single_assemblage_mixmod_data[, .N, `Accession  no`][, .N],
+  multi_assemblage_n_sites = multisite_mixmod_data[, .N, Site_No][, .N],
+  single_assemblage_n_modeled_specimens = single_modeled_assemblage[is.na(Specimen_No), .N],
+  single_assemblage_n_modeled_assemblage = single_modeled_assemblage[, .N]
+)
+
+####Table 3 information (elemental composition of the simulated assemblages)####
+table_3 <- dcast(rbind(single_assemblage_mixmod_data[, .(.N, Assemblage = "Single Assemblage", `Demographics` = "13% Immature, 46% Female, 40% Male", `Size` = "1.00"), .(Specimen_No, Group)][, .N, .(Assemblage, Demographics, Size, Group)],
+                       multisite_mixmod_data[, .N, .(Specimen_No, Group, Assemblage = ifelse(Site_No >= 10, paste0("Site ", Site_No), paste0("Site 0", Site_No)),
+                                                     `Demographics` = ifelse(Site_No %in% 1:5, "13% Immature, 46% Female, 40% Male", ifelse(Site_No %in% 6:10, "20% Immature, 70% Female, 10% Male", ifelse(Site_No %in% 11:15, "5% Immature, 35% Female, 60% Male", NA))),
+                                                     `Size` = ifelse(Site_No %in% c(1:2, 6:7, 11:12), "1.00", ifelse(Site_No %in% c(3, 8, 13), "1.20", ifelse(Site_No %in% c(4, 9, 14), "0.80", ifelse(Site_No %in% c(5, 10, 15), "1.20 (Males)", NA)))))][, .N, .(Assemblage, Demographics, Size, Group)]),
+                 Assemblage + `Demographics` + `Size` ~ Group, value.var = "N", fill = 0)
+#add totals column
+table_3[, Total := sum(.SD), Assemblage, .SDcols = names(table_3)[-(1:3)]]
+write.csv(table_3, file = "./Output/Tables/Table 3 - Simulation Demographics.csv", row.names = F)
+
+####Archaeological site buildup####
+####1. Import the archaeological data####
+#list of elements (names from OpenContext standards)
+modeled_elements <- c("scapula", "humerus", "radius bone", "fused metacarpal bones 3 and 4", "femur", "tibia", "talus", "calcaneus", "fused metatarsal bones 3 and 4", "proximal phalanx")
+
+#Barcin Hoyuk Cattle####
+barcin <- fread("./Data/Barcin Hoyuk Zooarchaeology Data (OpenContext - DOI 10.678-M7MS3QN7).csv")
+#Have to include element names that are not in the modeled_elements categories because they're collapsed categories of multiple metacarpal/metatarsal identifications
+barcin_data <- barcin[`Has Biological Taxonomy [Label]` %in% c("Bos taurus Linnaeus, 1758", "Bos primigenius") & `Has anatomical identification [Label]` %in% c(modeled_elements, "fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5", "metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4", "middle phalanx"), .(ID = paste("Barcin", `Label`, sep = " "), Site = "Barcin", Taxon = `Has Biological Taxonomy [Label]`, Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = `Has fusion character [Proximal Label]`, `Distal Fusion` = `Has fusion character [Distal Label]`, GLP = `Scap_glp`, Bd = ifelse(`Has anatomical identification [Label]` %in% "talus", Tal_bd, Bd), BT = NA, Bp = Bp, BFp = Bfp, DC = NA, GB = Gb)][!is.na(GLP) | !is.na(Bd) | !is.na(BT) | !is.na(Bp) | !is.na(BFp) | !is.na(DC) | !is.na(GB)]
+
+#Troubleshooting
+barcin_data[ID %in% c("Barcin Bone 448", "Barcin Bone 358"), c("Bp") := NA] #anomalously small Bp measurements (17.2, 18.1); error in taxon coding?
+
+#Create key between the "Anatomy" label from the original dataset and the "Element" label that will be used in the model
+barcin_element_key <- data.table(`Anatomy Label` = c("scapula", "humerus", "radius bone", "fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5", "femur", "tibia", "talus", "calcaneus", "metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4", "proximal phalanx", "middle phalanx"),
+                                 `Element Label` = c("Sca", "Hum", "Rad", "Mtc", "Fem", "Tib", "Ast", "Cal", "Mtt", "PH1", "PH2"))
+
+#Ilipinar Cattle####
+ilipinar <- fread("./Data/Ilipinar Zooarchaeology Main Zooarchaeological Dataset (OpenContext - DOI 10.6078-M72R3PM2).csv")
+ilipinar_data <- ilipinar[`Has Biological Taxonomy [Label]` %in% c("Bos taurus Linnaeus, 1758", "Bos", "Bos primigenius") & `Period` %in% c("X", "IX", "IX/VIII", "VIII", "VII", "VI", "VI/VA", "VA", "VB") & `Has anatomical identification [Label]` %in% c(modeled_elements, "middle phalanx"), .(ID = paste("Ilipinar", `Label`, sep = " "), Site = ifelse(`Period` %in% c("X", "IX", "IX/VIII", "VIII"), "Ilipinar 1 (Late Neolithic/Transitional)", ifelse(`Period` %in% c("VII", "VI", "VI/VA", "VA", "VB"), "Ilipinar 2 (Early Chalcolithic)", NA)), Taxon = `Has Biological Taxonomy [Label]`, Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = `Has fusion character [Proximal Label]`, `Distal Fusion` = `Has fusion character [Distal Label]`, GLP = GLP, Bd = ifelse(`Has anatomical identification [Label]` %in% c("fused metacarpal bones 3 and 4", "fused metatarsal bones 3 and 4"), `Bd (breadth of distal end- epi)`, `Bd`), BT = BT, Bp = Bp, BFp = BFp, DC = DC, GB = GB, Taxon = `Has Biological Taxonomy [Label]`)][!is.na(GLP) | !is.na(Bd) | !is.na(BT) | !is.na(Bp) | !is.na(BFp) | !is.na(DC) | !is.na(GB)]
+
+#Troubleshooting
+ilipinar_data[ID %in% "Ilipinar Bone 8029", c("Bp", "Bd") := .(NA, 68.8)] #originally listed as Bp
+ilipinar_data[ID %in% "Ilipinar Bone 2706", c("Bd") := .(61.1)] #appears to be switched with SD (44.7)
+ilipinar_data[ID %in% "Ilipinar Bone 1576", c("Bd") := .(45)] #appears to be switched with GLm (64.7)
+ilipinar_data[ID %in% "Ilipinar Bone 2073", c("Bd") := NA] #appears to be a copy of GLm (63.2), unclear what original measurement was
+ilipinar_data[ID %in% c("Ilipinar Bone 6592", "Ilipinar Bone 31126"), c("Bp") := NA] #Bp appears to be a copy of GLpe (58.6, 65.7)
+ilipinar_data[ID %in% c("Ilipinar Bone 1813"), c("Bd") := NA] #Bd appears anomalously low; possibly typo on the anatomy?
+ilipinar_data[ID %in% c("Ilipinar Bone 8680"), c("Bp", "BFp") := .(NA, NA)] #values are anomalously low and distant from one another, unclear if taxon or anatomy are correct (Bp = 55.3, BFp = 36.0)
+ilipinar_data[ID %in% "Ilipinar Bone 20694", c("Bp") := 38.1] #switched with GL (66)
+ilipinar_data[ID %in% "Ilipinar Bone 20427", c("Bp") := NA] #remove measurement (anomalously low), unclear if typo in measurement or taxon?
+
+#Creating key between the "Anatomy" label from the original dataset and the "Element" label that will be used in the model
+ilipinar_element_key <- data.table(`Anatomy Label` = c("scapula", "humerus", "radius bone", "fused metacarpal bones 3 and 4", "femur", "tibia", "talus", "calcaneus", "fused metatarsal bones 3 and 4", "proximal phalanx", "middle phalanx"),
+                                   `Element Label` = c("Sca", "Hum", "Rad", "Mtc", "Fem", "Tib", "Ast", "Cal", "Mtt", "PH1", "PH2"))
+
+#Mentese Cattle####
+mentese <- fread("./Data/Neolithic Mentese Faunal Data Table (OpenContext - DOI 10.6078-M7MG7MD8).csv")
+mentese_data <- mentese[`Has Biological Taxonomy [Label]` %in% "Bos" & `Has anatomical identification [Label]` %in% c(modeled_elements, "middle phalanx"), .(ID = paste("Mentese", `Label`, sep = " "), Site = "Mentese", Taxon = `Has Biological Taxonomy [Label]`, Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = `Has fusion character [Proximal Label]`, `Distal Fusion` = `Has fusion character [Distal Label]`, GLP = GLP, Bd = Bd, BT = BT, Bp = Bp, BFp = BFp, DC = NA, GB = GB)][!is.na(GLP) | !is.na(Bd) | !is.na(BT) | !is.na(Bp) | !is.na(BFp) | !is.na(DC) | !is.na(GB)]
+
+#Troubleshooting
+mentese_data[ID %in% "Mentese Bone 2403", Bp := 10.8] #Bp measurement is way too large relative to the Bd value (10.9); shifting to 10.8 seems more reasonable
+mentese_data[Anatomy %in% "calcaneus", `Proximal Fusion` := ifelse(`Distal Fusion` %in% "Distal epiphysis unfused", "Proximal epiphysis unfused", ifelse(`Distal Fusion` %in% "Distal epiphysis fusing", "Proximal epiphysis fusing", ifelse(`Distal Fusion` %in% "Distal epiphysis fused", "Proximal epiphysis fused", ifelse(`Distal Fusion` %in% "", "", NA))))] #calcaneus fusion is listed as `Distal Fusion` but is `Proximal Fusion` in other sites/codes
+
+#Creating key between the "Anatomy" label from the original dataset and the "Element" label that will be used in the model
+mentese_element_key <- data.table(`Anatomy Label` = c("scapula", "humerus", "radius bone", "fused metacarpal bones 3 and 4", "femur", "tibia", "talus", "calcaneus", "fused metatarsal bones 3 and 4", "proximal phalanx", "middle phalanx"),
+                                  `Element Label` = c("Sca", "Hum", "Rad", "Mtc", "Fem", "Tib", "Ast", "Cal", "Mtt", "PH1", "PH2"))
+
+#Pinarbasi Sheep####
+pinarbasi <- fread("./Data/Pinarbasi EOL Computational Data Challenge Revised Zooarchaeology Dataset (OpenContext - DOI 10.607-8M7X34VD1).csv")
+#Have to include element names that are not in the modeled_elements categories because they're collapsed categories of multiple metacarpal/metatarsal identifications
+pinarbasi_data <- pinarbasi[`Has Biological Taxonomy [Label]` %in% "Ovis" & `Context (3)` %in% "Site B" & `Has anatomical identification [Label]` %in% c(modeled_elements, "fused metacarpal bones 3 and 4; metacarpal bone of digit 1; metacarpal bone of digit 4; metacarpal bone of digit 5; metacarpal bone of digit 2; metacarpal bone; metacarpal bone of digit 3", "metatarsal bone of digit 2; metatarsal bone of digit 4; fused metatarsal bones 3 and 4; metatarsal bone of digit 3"), .(ID = paste("Pinarbasi B", `Label`, sep = " "), Site = "Pinarbasi B", Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = ifelse(!is.na(`GB (unfused)`) | !is.na(`Bp (unfused)`), "Proximal epiphysis unfused", `Has fusion character [Proximal Label]`), `Distal Fusion` = ifelse(!is.na(`Bd (unfused)`), "Distal epiphysis unfused", `Has fusion character [Distal Label]`), GLP = NA, Bd = ifelse(!is.na(`Bd (unfused)`), `Bd (unfused)`, Bd), BT = NA, Bp = ifelse(!is.na(`Bp (unfused)`), `Bp (unfused)`, Bp), BFp = BFp, DC = NA, GB = ifelse(!is.na(`GB (unfused)`), `GB (unfused)`, GB))][!is.na(GLP) | !is.na(Bd) | !is.na(BT) | !is.na(Bp) | !is.na(BFp) | !is.na(DC) | !is.na(GB)]
+
+#Creating key between the "Anatomy" label from the original dataset and the "Element" label that will be used in the model
+pinarbasi_element_key <- data.table(`Anatomy Label` = c("scapula", "humerus", "radius bone", "fused metacarpal bones 3 and 4; metacarpal bone of digit 1; metacarpal bone of digit 4; metacarpal bone of digit 5; metacarpal bone of digit 2; metacarpal bone; metacarpal bone of digit 3", "femur", "tibia", "talus", "calcaneus", "metatarsal bone of digit 2; metatarsal bone of digit 4; fused metatarsal bones 3 and 4; metatarsal bone of digit 3", "proximal phalanx"),
+                                    `Element Label` = c("Sca", "Hum", "Rad", "Mtc", "Fem", "Tib", "Ast", "Cal", "Mtt", "PH1"))
+
+
+#Reference animal from `zoolog` package
+sheep_standard_animal <- data.table(referencesDatabase$`Ovis orientalis`$Uerpmann) #redoing sheep even though it was done in the simulations
+bos_standard_animal <- data.table(referencesDatabase$`Bos primigenius`$Degerbol)
+#add in the measurement of the Scapula GLP (89.0 mm), Calcaneus GB (46.0 mm); Degerbol 1970: Table 13, Table 18
+bos_standard_animal <- rbind(bos_standard_animal, data.table(TAX = rep("Bos primigenius", 2), EL = c("Scapula", "Calcaneus"), Measure = c("GLP", "GB"), Standard = c(89.0, 46)))
+
+####2. Structuring the Datasets####
+
+#Reference Data
+#Rename standard animal measurements to match the names in the dataset
+sheep_standard_animal[EL %in% "Scapula", c("Element", "Measurement") := .("Sca", paste("Sca", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Humerus", c("Element", "Measurement") := .("Hum", paste("Hum", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Radius", c("Element", "Measurement") := .("Rad", paste("Rad", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Metacarpus", c("Element", "Measurement") := .("Mtc", paste("Mtc", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Femur", c("Element", "Measurement") := .("Fem", paste("Fem", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Tibia", c("Element", "Measurement") := .("Tib", paste("Tib", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Astragalus", c("Element", "Measurement") := .("Ast", paste("Ast", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Calcaneus", c("Element", "Measurement") := .("Cal", paste("Cal", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Metatarsus", c("Element", "Measurement") := .("Mtt", paste("Mtt", Measure, sep = "_"))]
+sheep_standard_animal[EL %in% "Phalanx 1 ant.", c("Element", "Measurement") := .("PH1", paste("PH1", Measure, sep = "_"))]
+#
+bos_standard_animal[EL %in% "Scapula", c("Element", "Measurement") := .("Sca", paste("Sca", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Humerus", c("Element", "Measurement") := .("Hum", paste("Hum", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Radius", c("Element", "Measurement") := .("Rad", paste("Rad", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Metacarpus", c("Element", "Measurement") := .("Mtc", paste("Mtc", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Femur", c("Element", "Measurement") := .("Fem", paste("Fem", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Tibia", c("Element", "Measurement") := .("Tib", paste("Tib", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Astragalus", c("Element", "Measurement") := .("Ast", paste("Ast", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Calcaneus", c("Element", "Measurement") := .("Cal", paste("Cal", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Metatarsus", c("Element", "Measurement") := .("Mtt", paste("Mtt", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Phalanx 1 ant.", c("Element", "Measurement") := .("PH1", paste("PH1", Measure, sep = "_"))]
+bos_standard_animal[EL %in% "Phalanx 2 ant.", c("Element", "Measurement") := .("PH1", paste("PH2", Measure, sep = "_"))]
+
+#Function to restructure the measurement data into a format for the model
+assemblage_restructure <- function(dataset, reference_dataset, element_key, included_measurements = c("Sca_GLP", "Hum_Bd", "Hum_BT", "Rad_Bp", "Rad_BFp", "Rad_Bd", "Mtc_Bp", "Mtc_Bd", "Fem_DC", "Fem_Bd", "Tib_Bp", "Tib_Bd", "Ast_Bd", "Cal_GB", "Mtt_Bp", "Mtt_Bd", "PH1_Bp")) {
+  #Element: identify what end of the bone (proximal/distal) is included in the measurements (for element portions).
+  #goes through element_key to change anatomical part names to the new labels
+  #Note: key may have multiple Anatomy Labels that fit onto the same `Element Label`
+  for(i in 1:nrow(element_key)) {
+    dataset[Anatomy %in% element_key[i, `Anatomy Label`], Element := element_key[i, `Element Label`]]
+    #Separate out proximal and distal element portions based on presence of later-fusing measurements (e.g., radius bone is proximal/distal based on presence of Bd measurement)
+    if(element_key[i, `Element Label`] %in% c("Rad", "Mtc", "Fem", "Mtt")) {
+      dataset[Anatomy %in% element_key[i, `Anatomy Label`], Element := ifelse(!is.na(Bd), paste(element_key[i, `Element Label`], "dist", sep = "_"), paste(element_key[i, `Element Label`], "prox", sep = "_"))]
+    }
+    if(element_key[i, `Element Label`] %in% c("Tib")) {
+      dataset[Anatomy %in% element_key[i, `Anatomy Label`], Element := ifelse(!is.na(Bp), paste(element_key[i, `Element Label`], "prox", sep = "_"), paste(element_key[i, `Element Label`], "dist", sep = "_"))]
+    }
+  }
+  #Immature: identify whether specimens COULD be immature based on element portion and fusion status, if relevant
+  dataset[Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+  dataset[Element %in% c("Hum", "Cal", "PH1", "PH2"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+  dataset[Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
+  dataset[Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+  #transform into long-form data
+  dataset_longdata <- melt(dataset, id.vars = c("ID", "Site", "Anatomy", "Element", "Proximal Fusion", "Distal Fusion", "Immature"), measure.vars = c("GLP", "Bd", "BT", "Bp", "BFp", "DC", "GB"), variable.name = "Measure", value.name = "Measurement_value")[!is.na(Measurement_value)]
+  #Measurement: combine element and measurement names (for measurement sets)
+  #goes through element_key to change anatomical part names to the new labels
+  #Note: key may have mlutiple Anatomy Labels that fit onto the same `Element Label`
+  for(i in 1:nrow(element_key)) {
+    dataset_longdata[Anatomy %in% element_key[i, `Anatomy Label`], Measurement := paste(element_key[i, `Element Label`], Measure, sep = "_")]
+  }
+  #bring in the reference measurement for each value (joined by measurement) and limiting the assemblage to the measurements that we're interested in modeling
+  mixmod_data <- dataset_longdata[reference_dataset[, .(Reference_value = Standard, Measurement)], on = c("Measurement")][!is.na(ID) & Measurement %in% included_measurements]
+  #Create numeric labels for measurement sets, element portions, and specimens (for Stan modeling)
+  mixmod_data[, Measurement_Set := as.numeric(as.factor(Measurement))]
+  mixmod_data[, Element_Portion := as.numeric(as.factor(Element))]
+  mixmod_data[, Specimen_No := as.numeric(as.factor(ID))]
+  #return new dataset
+  mixmod_data
+}
+#List of included measurements
+measurement_list <- c("Sca_GLP", "Hum_Bd", "Hum_BT", "Rad_Bp", "Rad_BFp", "Rad_Bd", "Mtc_Bp", "Mtc_Bd", "Fem_DC", "Fem_Bd", "Tib_Bp", "Tib_Bd", "Ast_Bd", "Cal_GB", "Mtt_Bp", "Mtt_Bd", "PH1_Bp")
+
+#Applying the function
+pinarbasi_mixmod_data <- assemblage_restructure(pinarbasi_data, sheep_standard_animal, pinarbasi_element_key, included_measurements = measurement_list)
+#
+barcin_mixmod_data <- assemblage_restructure(barcin_data, bos_standard_animal, barcin_element_key, included_measurements = c(measurement_list, "PH2_Bp"))
+ilipinar_mixmod_data <- assemblage_restructure(ilipinar_data, bos_standard_animal, ilipinar_element_key, included_measurements = c(measurement_list, "PH2_Bp"))
+mentese_mixmod_data <- assemblage_restructure(mentese_data, bos_standard_animal, mentese_element_key, included_measurements = c(measurement_list, "PH2_Bp"))
+
+####3. Collecting the demographic data####
+
+#Pinarbasi Sheep#
+#Use sheep code and sheep/goat code (being liberal, taking all that aren't conclusively goats)
+#This undoubtedly includes some goats, but the biases against unfused specimens (which are much more likely to be considered sheep/goat) is judged to be a bigger issue
+#This is a modeling choice, however, so can be changed depending on the context
+pinarbasi_demographic_observations <- pinarbasi[`Has Biological Taxonomy [Label]` %in% c("Ovis", "Sheep/goat") & `Context (3)` %in% c("Site B"), .(Site = "Pinarbasi B", N_Unfused = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "Proximal epiphysis unfused"), N_Ageable = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "" == F), N_Female = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% "female organism"), N_Sexable = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% c("female organism", "male organism")))]
+
+#NW Anatolian Cattle#
+barcin_demographic_observations <- barcin[`Has Biological Taxonomy [Label]` %in% c("Bos taurus Linnaeus, 1758", "Bos primigenius"), .(Site = "Barcin Hoyuk", N_Unfused = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "Proximal epiphysis unfused"), N_Ageable = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "" == F), N_Female = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% "female organism"), N_Sexable = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% c("female organism", "male organism")))]
+ilipinar_demographic_observations <- ilipinar[`Has Biological Taxonomy [Label]` %in% c("Bos taurus Linnaeus, 1758", "Bos primigenius", "Bos") & `Period` %in% c("X", "IX", "IX/VIII", "VIII", "VII", "VI", "VI/VA", "VA", "VB"), .(N_Unfused = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "Proximal epiphysis unfused"), N_Ageable = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "" == F), N_Female = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% "female organism"), N_Sexable = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% c("female organism", "male organism"))), .(Site = ifelse(`Period` %in% c("X", "IX", "IX/VIII", "VIII"), "Ilipinar 1 (Late Neolithic/Transitional)", ifelse(`Period` %in% c("VII", "VI", "VI/VA", "VA", "VB"), "Ilipinar 2 (Early Chalcolithic)", NA)))][order(Site)]
+mentese_demographic_observations <- mentese[`Has Biological Taxonomy [Label]` %in% c("Bos"), .(Site = "Mentese", N_Unfused = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "Proximal epiphysis unfused"), N_Ageable = sum(`Has anatomical identification [Label]` %in% c("proximal phalanx", "middle phalanx") & `Has fusion character [Proximal Label]` %in% "" == F), N_Female = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% "female organism"), N_Sexable = sum(`Has anatomical identification [Label]` %in% "innominate bone" & `Has physiological sex determination [Label]` %in% c("female organism", "male organism")))]
+
+
+####Formatting####
+#Single Assemblage analysis: add in "Site_No" field (model expects)
+pinarbasi_mixmod_data[, Site_No := 1]
+
+#Multisite analysis: Combine the site-level data together, add Site_No field
+nw_anatolian_mixmod_data <- rbind(
+  data.table(Site_No = 1, barcin_mixmod_data),
+  data.table(Site_No = 2, ilipinar_mixmod_data[Site %in% "Ilipinar 1 (Late Neolithic/Transitional)"]),
+  data.table(Site_No = 3, mentese_mixmod_data),
+  data.table(Site_No = 4, ilipinar_mixmod_data[Site %in% "Ilipinar 2 (Early Chalcolithic)"])
+)
+#Re-assign numeric codes for element portions, measurement sets, and individual specimens (to prevent mismatches/overlap)
+nw_anatolian_mixmod_data[, Measurement_Set := as.numeric(as.factor(Measurement))]
+nw_anatolian_mixmod_data[, Element_Portion := as.numeric(as.factor(Element))]
+nw_anatolian_mixmod_data[, Specimen_No := as.numeric(as.factor(ID))]
+
+#Combine the demographic data together, add Site_No field
+nw_anatolian_demographic_observations <- rbind(
+  data.table(Site_No = 1, barcin_demographic_observations),
+  data.table(Site_No = 2, ilipinar_demographic_observations[Site %in% "Ilipinar 1 (Late Neolithic/Transitional)"]),
+  data.table(Site_No = 3, mentese_demographic_observations),
+  data.table(Site_No = 4, ilipinar_demographic_observations[Site %in% "Ilipinar 2 (Early Chalcolithic)"])
+)
+
+#
+
+####Constructing modeled (and full) assemblages from OpenContext data for compositional and fusion analyses####
+#gather the different assemblages: measured assemblage, assemblage of modeled elements, full assemblage (including unmodeled elements)
+
+#Pinarbasi Sheep#
+pinarbasi_additional_elements <- c("innominate bone", "middle phalanx", "ulna") #additional elements for compositional analysis
+pinarbasi_measured_assemblage <- pinarbasi_mixmod_data[, .N, .(ID, Specimen_No, Anatomy, Element, Element_Portion, Immature, `Proximal Fusion`, `Distal Fusion`)]
+pinarbasi_modeled_assemblage <- pinarbasi[`Has Biological Taxonomy [Label]` %in% "Ovis" & `Context (3)` %in% "Site B" & `Has anatomical identification [Label]` %in% pinarbasi_measured_assemblage[, .N, Anatomy][, Anatomy], .(ID = paste("Pinarbasi B", `Label`, sep = " "), Site = "Pinarbasi B", Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = ifelse(!is.na(`GB (unfused)`) | !is.na(`Bp (unfused)`), "Proximal epiphysis unfused", `Has fusion character [Proximal Label]`), `Distal Fusion` = ifelse(!is.na(`Bd (unfused)`), "Distal epiphysis unfused", `Has fusion character [Distal Label]`))]
+pinarbasi_full_assemblage <- pinarbasi[`Has Biological Taxonomy [Label]` %in% "Ovis" & `Context (3)` %in% "Site B" & `Has anatomical identification [Label]` %in% c(pinarbasi_measured_assemblage[, .N, Anatomy][, Anatomy], pinarbasi_additional_elements), .(ID = paste("Pinarbasi B", `Label`, sep = " "), Site = "Pinarbasi B", Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = ifelse(!is.na(`GB (unfused)`) | !is.na(`Bp (unfused)`), "Proximal epiphysis unfused", `Has fusion character [Proximal Label]`), `Distal Fusion` = ifelse(!is.na(`Bd (unfused)`), "Distal epiphysis unfused", `Has fusion character [Distal Label]`))]
+
+#Assign specimen numbers for the specimens that were modeled directly (measured specimens) in the modeled and full assemblages
+pinarbasi_modeled_assemblage <- pinarbasi_measured_assemblage[, .(ID, Specimen_No, Element_Portion, Immature)][pinarbasi_modeled_assemblage, on = "ID"]
+pinarbasi_full_assemblage <- pinarbasi_measured_assemblage[, .(ID, Specimen_No, Element_Portion, Immature)][pinarbasi_full_assemblage, on = "ID"]
+
+#Assign the element portion numbers for specimens whose element portions were modeled
+pinarbasi_full_element_key <- rbind(pinarbasi_element_key,
+                                    data.table(`Anatomy Label` = c("innominate bone", "middle phalanx", "ulna"), `Element Label` = c("Pel", "PH2", "Uln")))
+for(i in 1:pinarbasi_full_element_key[, .N]) {
+  pinarbasi_modeled_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := pinarbasi_full_element_key[i, `Element Label`]]
+  pinarbasi_full_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := pinarbasi_full_element_key[i, `Element Label`]]
+  #Separate out proximal and distal element portions based on presence of later-fusing measurements (e.g., radius bone is proximal/distal based on presence of Bd measurement)
+  if(pinarbasi_full_element_key[i, `Element Label`] %in% c("Rad", "Mtc", "Fem", "Mtt")) {
+    pinarbasi_modeled_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(pinarbasi_full_element_key[i, `Element Label`], "dist", sep = "_"), paste(pinarbasi_full_element_key[i, `Element Label`], "prox", sep = "_"))]
+    pinarbasi_full_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(pinarbasi_full_element_key[i, `Element Label`], "dist", sep = "_"), paste(pinarbasi_full_element_key[i, `Element Label`], "prox", sep = "_"))]
+  }
+  if(pinarbasi_full_element_key[i, `Element Label`] %in% c("Tib")) {
+    pinarbasi_modeled_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(pinarbasi_full_element_key[i, `Element Label`], "prox", sep = "_"), paste(pinarbasi_full_element_key[i, `Element Label`], "dist", sep = "_"))]
+    pinarbasi_full_assemblage[Anatomy %in% pinarbasi_full_element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(pinarbasi_full_element_key[i, `Element Label`], "prox", sep = "_"), paste(pinarbasi_full_element_key[i, `Element Label`], "dist", sep = "_"))]
+  }
+}
+
+#Remove unobserved element portions (Rad_prox and Mtc_prox) from modeled assemblage (we don't have direct observations of the parameters from the model)
+pinarbasi_modeled_assemblage <- pinarbasi_measured_assemblage[, .N, .(Element_Portion, Element)][, .(Element_Portion, Element)][pinarbasi_modeled_assemblage, on = "Element"][!is.na(Element_Portion)]
+pinarbasi_full_assemblage <- pinarbasi_measured_assemblage[, .N, .(Element_Portion, Element)][, .(Element_Portion, Element)][pinarbasi_full_assemblage, on = "Element"]
+
+#Assign new element portion numbers for unmodeled elements (including Rad_prox and Mtc_prox)
+pinarbasi_full_assemblage[Element %in% "Rad_prox", Element_Portion := 11]
+pinarbasi_full_assemblage[Element %in% "Mtc_prox", Element_Portion := 12]
+pinarbasi_full_assemblage[Element %in% "Pel", Element_Portion := 13]
+pinarbasi_full_assemblage[Element %in% "PH2", Element_Portion := 14]
+pinarbasi_full_assemblage[Element %in% "Uln", Element_Portion := 15]
+
+#Define the Immature variable (potentially immature status based on fusion)
+pinarbasi_modeled_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+pinarbasi_modeled_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+pinarbasi_modeled_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
+pinarbasi_modeled_assemblage[is.na(Immature) & Element %in% c("Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+#
+pinarbasi_full_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+pinarbasi_full_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1", "PH2"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+pinarbasi_full_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
+pinarbasi_full_assemblage[is.na(Immature) & Element %in% c("Uln", "Pel", "Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+
+#NW Anatolian Cattle#
+#create full assemblage for fusion analysis
+full_assemblage_maker <- function(original_data, biology_code, site_code, mixmod_data, element_list, full_elements, element_key) {
+  full_assemblage <- original_data[`Has Biological Taxonomy [Label]` %in% biology_code & `Has anatomical identification [Label]` %in% full_elements, .(ID = paste(site_code, Label, sep = " "), Site = site_code, Taxon = `Has Biological Taxonomy [Label]`, Anatomy = `Has anatomical identification [Label]`, `Proximal Fusion` = `Has fusion character [Proximal Label]`, `Distal Fusion` = `Has fusion character [Distal Label]`)]
+  #Assign specimen numbers for the specimens that were modeled directly (measured specimens) in the modeled and full assemblages
+  full_assemblage <- mixmod_data[, .N, .(ID, Specimen_No, Immature)][full_assemblage, on = "ID"]
+  #Assign the element portion labels for specimens that weren't modeled directly (no measurements)
+  for(i in 1:element_key[, .N]) {
+    full_assemblage[Anatomy %in% element_key[i, `Anatomy Label`], Element := element_key[i, `Element Label`]]
+    #Separate out proximal and distal element portions based on presence of later-fusing measurements (e.g., radius bone is proximal/distal based on presence of Bd measurement)
+    if(element_key[i, `Element Label`] %in% c("Rad", "Mtc", "Fem", "Mtt")) {
+      full_assemblage[Anatomy %in% element_key[i, `Anatomy Label`], Element := ifelse(`Distal Fusion` %in% "" == F, paste(element_key[i, `Element Label`], "dist", sep = "_"), paste(element_key[i, `Element Label`], "prox", sep = "_"))]
+    }
+    if(element_key[i, `Element Label`] %in% c("Tib")) {
+      full_assemblage[Anatomy %in% element_key[i, `Anatomy Label`], Element := ifelse(`Proximal Fusion` %in% "" == F, paste(element_key[i, `Element Label`], "prox", sep = "_"), paste(element_key[i, `Element Label`], "dist", sep = "_"))]
+    }
+  }
+  #Assign Element_Portion values that match the original sets (and add new ones for unmodeled element portions)
+  full_assemblage <- element_list[, .N, .(Element, Element_Portion)][full_assemblage, on = "Element"]
+  full_assemblage[Element %in% "Pel", Element_Portion := 17]
+  full_assemblage[Element %in% "Uln", Element_Portion := 18]
+  #Get the Immature variable (potentially immature status based on fusion)
+  full_assemblage[is.na(Immature) & Element %in% c("Sca", "Ast"), Immature := 1] #does not fuse / subject to post-fusion growth and has no relevant fusion data to exclude immature status
+  full_assemblage[is.na(Immature) & Element %in% c("Hum", "Cal", "PH1", "PH2"), Immature := as.numeric(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") == F)]
+  full_assemblage[is.na(Immature) & Element %in% c("Rad_prox", "Rad_dist", "Mtc_prox", "Mtc_dist", "Mtt_prox", "Mtt_dist"), Immature := as.numeric(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing") == F)]
+  full_assemblage[is.na(Immature) & Element %in% c("Uln", "Pel", "Fem_prox", "Fem_dist", "Tib_prox", "Tib_dist"), Immature := as.numeric((`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing")) == F)]
+  #
+  full_assemblage[, .(ID, Specimen_No, Site, Taxon, Anatomy, Element, Element_Portion, Immature, `Proximal Fusion`, `Distal Fusion`)]
+}
+
+nw_anatolian_additional_elements <- c("innominate bone", "ulna") #additional elements for fusion analysis
+
+barcin_full_assemblage <- full_assemblage_maker(original_data = barcin, biology_code = c("Bos taurus Linnaeus, 1758", "Bos primigenius"), site_code = "Barcin", mixmod_data = nw_anatolian_mixmod_data[Site %in% "Barcin"], element_list = nw_anatolian_mixmod_data[, .N, .(Element, Element_Portion)], full_elements = c(modeled_elements, "middle phalanx", nw_anatolian_additional_elements, "fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5", "metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4"), element_key = rbind(barcin_element_key, data.table(`Anatomy Label` = c("innominate bone", "ulna"), `Element Label` = c("Pel", "Uln"))))
+ilipinar1_full_assemblage <- full_assemblage_maker(original_data = ilipinar[Period %in% c("X", "IX", "IX/VIII", "VIII", "VII")], biology_code = c("Bos taurus Linnaeus, 1758", "Bos", "Bos primigenius"), site_code = "Ilipinar", mixmod_data = nw_anatolian_mixmod_data[Site %in% "Ilipinar 1 (Late Neolithic/Transitional)"], element_list = nw_anatolian_mixmod_data[, .N, .(Element, Element_Portion)], full_elements = c(modeled_elements, "middle phalanx", nw_anatolian_additional_elements), element_key = rbind(ilipinar_element_key, data.table(`Anatomy Label` = c("innominate bone", "ulna"), `Element Label` = c("Pel", "Uln"))))
+ilipinar2_full_assemblage <- full_assemblage_maker(original_data = ilipinar[Period %in% c("VI", "VI/VA", "VA", "VB")], biology_code = c("Bos taurus Linnaeus, 1758", "Bos", "Bos primigenius"), site_code = "Ilipinar", mixmod_data = nw_anatolian_mixmod_data[Site %in% "Ilipinar 2 (Early Chalcolithic)"], element_list = nw_anatolian_mixmod_data[, .N, .(Element, Element_Portion)], full_elements = c(modeled_elements, "middle phalanx", nw_anatolian_additional_elements), element_key = rbind(ilipinar_element_key, data.table(`Anatomy Label` = c("innominate bone", "ulna"), `Element Label` = c("Pel", "Uln"))))
+mentese_full_assemblage <- full_assemblage_maker(original_data = mentese, biology_code = "Bos", site_code = "Mentese", mixmod_data = nw_anatolian_mixmod_data[Site %in% "Mentese"], element_list = nw_anatolian_mixmod_data[, .N, .(Element, Element_Portion)], full_elements = c(modeled_elements, "middle phalanx", nw_anatolian_additional_elements), element_key = rbind(mentese_element_key, data.table(`Anatomy Label` = c("innominate bone", "ulna"), `Element Label` = c("Pel", "Uln"))))
+
+#Troubleshooting
+ilipinar1_full_assemblage[, Site := "Ilipinar 1 (Late Neolithic/Transitional)"]
+ilipinar2_full_assemblage[, Site := "Ilipinar 2 (Early Chalcolithic)"]
+mentese_full_assemblage[Anatomy %in% "calcaneus", `Proximal Fusion` := ifelse(`Distal Fusion` %in% "Distal epiphysis unfused", "Proximal epiphysis unfused", ifelse(`Distal Fusion` %in% "Distal epiphysis fusing", "Proximal epiphysis fusing", ifelse(`Distal Fusion` %in% "Distal epiphysis fused", "Proximal epiphysis fused", ifelse(`Distal Fusion` %in% "", "", NA))))] #calcaneus fusion is listed as `Distal Fusion` but is `Proximal Fusion` in other sites/codes
+
+#Turn the full assemblages into "fusion assemblages" of specimens with fusion data#
+#Key that fits specimens into fusion stages (based on fusion timing in Grigson (1989))
+bos_element_stage_key <- data.table(Fusion_Element = c("Rad_prox", "Hum_dist", "Pel", "Sca", "PH1", "PH2", "Tib_dist", "Mtc_dist", "Mtt_dist", "Cal", "Fem_prox", "Fem_dist", "Uln", "Rad_dist", "Tib_prox", "Hum_prox"),
+                                    Stage = c(1, 1, 1, 1, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 4, 4))
+#
+fusion_assemblage_maker <- function(full_assemblage, element_stage_key) {
+  full_assemblage[Element %in% "Rad_prox" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Rad_prox", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Hum" & `Distal Fusion` %in% "" == F & `Proximal Fusion` %in% "", c("Fusion_Element", "Fusion") := .("Hum_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Pel" & (`Proximal Fusion` %in% "" == F | `Distal Fusion` %in% "" == F), c("Fusion_Element", "Fusion") := .("Pel", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Sca" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Sca", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "PH1" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("PH1", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "PH2" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("PH2", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Tib_dist" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Tib_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Mtc_dist" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Mtc_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Mtt_dist" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Mtt_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Cal" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Cal", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Fem_prox" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Fem_prox", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Fem_dist" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Fem_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Uln" & (`Proximal Fusion` %in% "" == F | `Distal Fusion` %in% "" == F), c("Fusion_Element", "Fusion") := .("Uln", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing") | `Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Rad_dist" & `Distal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Rad_dist", ifelse(`Distal Fusion` %in% c("Distal epiphysis fused", "Distal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Tib_prox" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Tib_prox", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  full_assemblage[Element %in% "Hum" & `Proximal Fusion` %in% "" == F, c("Fusion_Element", "Fusion") := .("Hum_prox", ifelse(`Proximal Fusion` %in% c("Proximal epiphysis fused", "Proximal epiphysis fusing"), "Fused", "Unfused"))]
+  fusion_assemblage <- full_assemblage[, .(ID, Specimen_No, Site, Anatomy, Element, Element_Portion, Immature, `Proximal Fusion`, `Distal Fusion`, Fusion_Element, Fusion)][element_stage_key, on = "Fusion_Element"][!is.na(Fusion_Element) & !is.na(Fusion)]
+  fusion_assemblage
+}
+
+#Create the fusion assemblages
+barcin_fusion_assemblage <- fusion_assemblage_maker(full_assemblage = barcin_full_assemblage, element_stage_key = bos_element_stage_key)
+ilipinar1_fusion_assemblage <- fusion_assemblage_maker(full_assemblage = ilipinar1_full_assemblage, element_stage_key = bos_element_stage_key)
+mentese_fusion_assemblage <- fusion_assemblage_maker(full_assemblage = mentese_full_assemblage, element_stage_key = bos_element_stage_key)
+ilipinar2_fusion_assemblage <- fusion_assemblage_maker(full_assemblage = ilipinar2_full_assemblage, element_stage_key = bos_element_stage_key)
+
+####Tables 4 and 5####
+#Summarize the archaeological data for in-text numbers (and Table 2)
+archaeological_sites_summary <- list(
+  pinarbasi_msres_N = pinarbasi_mixmod_data[, .N],
+  pinarbasi_specimens_N = pinarbasi_mixmod_data[, .N, Specimen_No][, .N],
+  pinarbasi_age_observation = pinarbasi_demographic_observations[, ifelse(N_Ageable > 0, paste0(N_Unfused, " / ", N_Ageable, " (", round(100 * (N_Unfused / N_Ageable), 0), "%)"), paste0(N_Unfused, " / ", N_Ageable))],
+  pinarbasi_sexable_pelves_N = pinarbasi_demographic_observations[, N_Sexable],
+  pinarbasi_sex_observation = pinarbasi_demographic_observations[, ifelse(N_Sexable > 0, paste0(N_Female, " / ", N_Sexable, " (", round(100 * (N_Female / N_Sexable), 0), "%)"), paste0(N_Female, " / ", N_Sexable))],
+  #
+  nw_anatolian_cattle_specimens_N = nw_anatolian_mixmod_data[, .N, Specimen_No][, .N],
+  barcin_specimens_N = nw_anatolian_mixmod_data[Site_No %in% 1, .N, Specimen_No][, .N],
+  ilipinar1_specimens_N = nw_anatolian_mixmod_data[Site_No %in% 2, .N, Specimen_No][, .N],
+  mentese_specimens_N = nw_anatolian_mixmod_data[Site_No %in% 3, .N, Specimen_No][, .N],
+  ilipinar2_specimens_N = nw_anatolian_mixmod_data[Site_No %in% 4, .N, Specimen_No][, .N],
+  ilipinar_measured_bos_primigenius_N = ilipinar_data[Taxon %in% "Bos primigenius", .N],
+  ilipinar_measured_bos_spp_N = ilipinar_data[Taxon %in% "Bos", .N],
+  ilipinar_full_bos_primigenius_N = ilipinar1_full_assemblage[Taxon %in% "Bos primigenius", .N] + ilipinar2_full_assemblage[Taxon %in% "Bos primigenius", .N],
+  ilipinar_full_bos_spp_N = ilipinar1_full_assemblage[Taxon %in% "Bos", .N] + ilipinar2_full_assemblage[Taxon %in% "Bos", .N],
+  barcin_age_observation = nw_anatolian_demographic_observations[Site_No %in% 1, ifelse(N_Ageable > 0, paste0(N_Unfused, " / ", N_Ageable, " (", round(100 * (N_Unfused / N_Ageable), 0), "%)"), paste0(N_Unfused, " / ", N_Ageable))],
+  ilipinar1_age_observation = nw_anatolian_demographic_observations[Site_No %in% 2, ifelse(N_Ageable > 0, paste0(N_Unfused, " / ", N_Ageable, " (", round(100 * (N_Unfused / N_Ageable), 0), "%)"), paste0(N_Unfused, " / ", N_Ageable))],
+  mentese_age_observation = nw_anatolian_demographic_observations[Site_No %in% 3, ifelse(N_Ageable > 0, paste0(N_Unfused, " / ", N_Ageable, " (", round(100 * (N_Unfused / N_Ageable), 0), "%)"), paste0(N_Unfused, " / ", N_Ageable))],
+  ilipinar2_age_observation = nw_anatolian_demographic_observations[Site_No %in% 4, ifelse(N_Ageable > 0, paste0(N_Unfused, " / ", N_Ageable, " (", round(100 * (N_Unfused / N_Ageable), 0), "%)"), paste0(N_Unfused, " / ", N_Ageable))],
+  barcin_sex_observation = nw_anatolian_demographic_observations[Site_No %in% 1, ifelse(N_Sexable > 0, paste0(N_Female, " / ", N_Sexable, " (", round(100 * (N_Female / N_Sexable), 0), "%)"), paste0(N_Female, " / ", N_Sexable))],
+  ilipinar1_sex_observation = nw_anatolian_demographic_observations[Site_No %in% 2, ifelse(N_Sexable > 0, paste0(N_Female, " / ", N_Sexable, " (", round(100 * (N_Female / N_Sexable), 0), "%)"), paste0(N_Female, " / ", N_Sexable))],
+  mentese_sex_observation = nw_anatolian_demographic_observations[Site_No %in% 3, ifelse(N_Sexable > 0, paste0(N_Female, " / ", N_Sexable, " (", round(100 * (N_Female / N_Sexable), 0), "%)"), paste0(N_Female, " / ", N_Sexable))],
+  ilipinar2_sex_observation = nw_anatolian_demographic_observations[Site_No %in% 4, ifelse(N_Sexable > 0, paste0(N_Female, " / ", N_Sexable, " (", round(100 * (N_Female / N_Sexable), 0), "%)"), paste0(N_Female, " / ", N_Sexable))]
+)
+
+####Summarize the elemental composition of the archaeological assemblages####
+table_4 <- pinarbasi_mixmod_data[, .N, .(Element_Portion, Element, Measurement = tstrsplit(Measurement, "_")[[2]])][order(Element_Portion), .(`Element Portion` = c("Astragalus", "Calcaneus", "Humerus", "Metacarpal (Distal)", "Metatarsal (Distal)", "Metatarsal (Proximal)", "First Phalanx", "Radius (Distal)", "Tibia (Distal)", "Tibia (Proximal)"), Measurement, N)]
+table_5 <- data.table(reshape2::dcast(nw_anatolian_mixmod_data[, .N, .(Element_Portion, Element, Site_No, Site)][order(Site_No, Element), .(Element, Site, N)], Element ~ Site, fun.aggregate = sum, value.var = "N", fill = 0, margins = "Element"))[, .(`Element Portion` = c("Astragalus", "Calcaneus", "Femur (Distal)", "Femur (Proximal)", "Humerus", "Metacarpal (Distal)", "Metacarpal (Proximal)", "Metatarsal (Distal)", "Metatarsal (Proximal)", "First Phalanx", "Second Phalanx", "Radius (Distal)", "Radius (Proximal)", "Scapula", "Tibia (Distal)", "Tibia (Proximal)", "Total"), `Barcın Höyük` = Barcin, `Ilıpınar Höyük (Late Neolithic/Transitional)` = `Ilipinar 1 (Late Neolithic/Transitional)`, `Ilıpınar Höyük (Early Chalcolithic)` = `Ilipinar 2 (Early Chalcolithic)`, `Menteşe Höyük` = Mentese)]
+#
+write.csv(table_4, file = "./Output/Tables/Table 4 - Pinarbasi B Composition.csv", row.names = F)
+write.csv(table_5, file = "./Output/Tables/Table 5 - NW Anatolian Composition.csv", row.names = F)
+
+####Simulation Modeling####
+#Single Assemblage Analysis
+single_assemblage_mixmod_standata <- list(
+  #Sample sizes
+  N_Specimens = single_assemblage_mixmod_data[, .N, Specimen_No][, .N],
+  N_Measurements = single_assemblage_mixmod_data[, .N],
+  N_Element_Portions = single_assemblage_mixmod_data[, .N, Element_Portion][, .N],
+  N_Measurement_Sets = single_assemblage_mixmod_data[, .N, Measurement_Set][, .N],
+  #Specimen observations
+  Element_Portion = single_assemblage_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Element_Portion],
+  Immature = single_assemblage_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Immature],
+  Immature_Proportion = as.matrix(dcast(single_assemblage_mixmod_data[, .(Immature_Proportion = mean(Immature)), .(Site_No, Element_Portion)], Site_No ~ Element_Portion, value.var = "Immature_Proportion", fill = 0))[, 2:(single_assemblage_mixmod_data[, .N, Element_Portion][, .N] + 1)],
+  #Measurement observations
+  Measurement_obs = single_assemblage_mixmod_data[, Measurement_value],
+  Measurement_sd = single_assemblage_mixmod_data[, Measurement_value * 0.01], #Calculate measurement error for observed measurements and reference data (1% based on data from Breslawksi and Byers 2015)
+  Reference_obs = single_assemblage_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
+  Reference_sd = single_assemblage_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
+  Measurement_Set = single_assemblage_mixmod_data[, Measurement_Set],
+  Specimen = single_assemblage_mixmod_data[, Specimen_No],
+  #Demographic observations
+  Immature_obs = single_assemblage_demographic_observations[, N_Unfused],
+  Immature_obs_n = single_assemblage_demographic_observations[, N_Ageable],
+  Female_obs = single_assemblage_demographic_observations[, N_Female],
+  Female_obs_n = single_assemblage_demographic_observations[, N_Sexable],
+  #Prior distributions for hyper-parameters
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
+  prior_mu_female = c(0, 0.1),
+  prior_logdelta_immature = c(-3.5, 0.4),
+  prior_logdelta_male = c(-2.7, 0.1),
+  prior_logsigma_immature = c(-3.05, 0.1),
+  prior_logsigma_female = c(-3.1, 0.1),
+  prior_logsigma_male = c(-3.1, 0.1)
+)
+singlesite_mixture_stanmodel <- cmdstan_model("./Scripts/LSI_mixture_model_singlesite.stan")
+single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
+  data = single_assemblage_mixmod_standata,
+  chains = 4,
+  parallel_chains = 4,
+  refresh = 250,
+  seed = 1303894618,
+  adapt_delta = 0.90,
+  max_treedepth = 15
+)
+single_assemblage_stanfit <- rstan::read_stan_csv(single_assemblage_samples$output_files())
+single_assemblage_post <- extract(single_assemblage_stanfit)
+
+table_simulated_single_assemblage_model_parameters <- data.table(single_assemblage_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `$5\\%$ Quantile` = round(q5, 2), `$95\\%$ Quantile` = round(q95, 2), `$\\hat{R}$` = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+#
+#Multisite Analysis
+multisite_mixmod_standata <- list(
+  #Sample sizes
+  N_Sites = multisite_mixmod_data[, .N, Site_No][, .N],
+  N_Specimens = multisite_mixmod_data[, .N, Specimen_No][, .N],
+  N_Measurements = multisite_mixmod_data[, .N],
+  N_Element_Portions = multisite_mixmod_data[, .N, Element_Portion][, .N],
+  N_Measurement_Sets = multisite_mixmod_data[, .N, Measurement_Set][, .N],
+  #Specimen observations
+  Site = multisite_mixmod_data[, .N, .(Specimen_No, Element_Portion, Site_No, Immature)][order(Specimen_No), Site_No],
+  Element_Portion = multisite_mixmod_data[, .N, .(Specimen_No, Element_Portion, Site_No, Immature)][order(Specimen_No), Element_Portion],
+  Immature = multisite_mixmod_data[, .N, .(Specimen_No, Element_Portion, Site_No, Immature)][order(Specimen_No), Immature],
+  Immature_Proportion = as.matrix(dcast(multisite_mixmod_data[, .(Immature_Proportion = mean(Immature)), .(Site_No, Element_Portion)], Site_No ~ Element_Portion, value.var = "Immature_Proportion", fill = 0))[, 2:(multisite_mixmod_data[, .N, Element_Portion][, .N] + 1)],
+  #Measurement observations
+  Measurement_obs = multisite_mixmod_data[, Measurement_value],
+  Measurement_sd = multisite_mixmod_data[, Measurement_value * 0.01], #Calculate measurement error for observed measurements and reference data (1% based on data from Breslawksi and Byers 2015)
+  Reference_obs = multisite_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
+  Reference_sd = multisite_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
+  Measurement_Set = multisite_mixmod_data[, Measurement_Set],
+  Specimen = multisite_mixmod_data[, Specimen_No],
+  #Demographic observations
+  N_Immature_obs = multisite_demographic_observations[, .N],
+  Immature_obs_site = multisite_demographic_observations[, Site_No],
+  Immature_obs = multisite_demographic_observations[, N_Unfused],
+  Immature_obs_n = multisite_demographic_observations[, N_Ageable],
+  N_Female_obs = multisite_demographic_observations[, .N],
+  Female_obs_site = multisite_demographic_observations[, Site_No],
+  Female_obs = multisite_demographic_observations[, N_Female],
+  Female_obs_n = multisite_demographic_observations[, N_Sexable],
+  #Prior distributions for hyper-parameters
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
+  prior_mu_female = c(0, 0.2),
+  prior_logdelta_immature = c(-3.5, 0.5),
+  prior_logdelta_male = c(-2.7, 0.5),
+  prior_logsigma_immature = c(-3.05, 0.25),
+  prior_logsigma_female = c(-3.1, 0.2),
+  prior_logsigma_male = c(-3.1, 0.2)
+)
+LSI_multisite_model <- cmdstan_model("./Scripts/LSI_mixture_model_multisite.stan")
+multisite_samples <- LSI_multisite_model$sample(
+  data = multisite_mixmod_standata,
+  chains = 4,
+  parallel_chains = 4,
+  refresh = 250,
+  adapt_delta = 0.90,
+  seed = 1527876519,
+  max_treedepth = 15
+)
+multisite_stanfit <- rstan::read_stan_csv(multisite_samples$output_files())
+multisite_post <- extract(multisite_stanfit)
+
+table_simulated_multisite_site_parameters <- data.table(multisite_samples$summary(c("site_theta", "site_mu_immature", "site_mu_female", "site_mu_male", "site_sigma_immature", "site_sigma_female", "site_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `$5\\%$ Quantile` = round(q5, 2), `$95\\%$ Quantile` = round(q95, 2), `$\\hat{R}$` = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+
+####Pinarbasi B fit####
+#Format the data for Stan and run the analyses
+pinarbasi_mixmod_standata <- list(
+  #Sample sizes
+  N_Specimens = pinarbasi_mixmod_data[, .N, Specimen_No][, .N],
+  N_Measurements = pinarbasi_mixmod_data[, .N],
+  N_Element_Portions = pinarbasi_mixmod_data[, .N, Element_Portion][, .N],
+  N_Measurement_Sets = pinarbasi_mixmod_data[, .N, Measurement_Set][, .N],
+  #Specimen observations
+  Element_Portion = pinarbasi_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Element_Portion],
+  Immature = pinarbasi_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Immature],
+  Immature_Proportion = as.matrix(dcast(pinarbasi_mixmod_data[, .(Immature_Proportion = mean(Immature)), .(Site_No, Element_Portion)], Site_No ~ Element_Portion, value.var = "Immature_Proportion", fill = 0))[, 2:(pinarbasi_mixmod_data[, .N, Element_Portion][, .N] + 1)],
+  #Measurement observations
+  Measurement_obs = pinarbasi_mixmod_data[, Measurement_value],
+  Measurement_sd = pinarbasi_mixmod_data[, Measurement_value * 0.01],
+  Reference_obs = pinarbasi_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
+  Reference_sd = pinarbasi_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
+  Measurement_Set = pinarbasi_mixmod_data[, Measurement_Set],
+  Specimen = pinarbasi_mixmod_data[, Specimen_No],
+  #Demographic observations
+  Immature_obs = pinarbasi_demographic_observations[, N_Unfused],
+  Immature_obs_n = pinarbasi_demographic_observations[, N_Ageable],
+  Female_obs = pinarbasi_demographic_observations[, N_Female],
+  Female_obs_n = pinarbasi_demographic_observations[, N_Sexable],
+  #Prior distributions for hyper-parameters
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
+  prior_mu_female = c(0, 0.1),
+  prior_logdelta_immature = c(-3.5, 0.4),
+  prior_logdelta_male = c(-2.7, 0.1),
+  prior_logsigma_immature = c(-3.05, 0.1),
+  prior_logsigma_female = c(-3.1, 0.1),
+  prior_logsigma_male = c(-3.1, 0.1)
+)
+
+singlesite_mixture_stanmodel <- cmdstan_model("./Scripts/LSI_mixture_model_singlesite.stan")
+pinarbasi_samples <- singlesite_mixture_stanmodel$sample(
+  data = pinarbasi_mixmod_standata,
+  chains = 4,
+  parallel_chains = 4,
+  refresh = 250,
+  adapt_delta = 0.90,
+  seed = 1763576974,
+  max_treedepth = 15
+)
+pinarbasi_stanfit <- rstan::read_stan_csv(pinarbasi_samples$output_files())
+pinarbasi_post <- extract(pinarbasi_stanfit)
+table_pinarbasi_model_parameters <- data.table(pinarbasi_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `$5\\%$ Quantile` = round(q5, 2), `$95\\%$ Quantile` = round(q95, 2), `$\\hat{R}$` = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+
+####NW Anatolain fit####
+nw_anatolian_mixmod_standata <- list(
+  #Sample sizes
+  N_Sites = nw_anatolian_mixmod_data[, .N, Site_No][, .N],
+  N_Specimens = nw_anatolian_mixmod_data[, .N, Specimen_No][, .N],
+  N_Measurements = nw_anatolian_mixmod_data[, .N],
+  N_Element_Portions = nw_anatolian_mixmod_data[, .N, Element_Portion][, .N],
+  N_Measurement_Sets = nw_anatolian_mixmod_data[, .N, Measurement_Set][, .N],
+  #Specimen observations
+  Site = nw_anatolian_mixmod_data[, .N, .(Specimen_No, Site_No, Element_Portion, Immature)][order(Specimen_No), Site_No],
+  Element_Portion = nw_anatolian_mixmod_data[, .N, .(Specimen_No, Site_No, Element_Portion, Immature)][order(Specimen_No), Element_Portion],
+  Immature = nw_anatolian_mixmod_data[, .N, .(Specimen_No, Site_No, Element_Portion, Immature)][order(Specimen_No), Immature],
+  Immature_Proportion = as.matrix(dcast(nw_anatolian_mixmod_data[, .(Immature_Proportion = mean(Immature)), .(Site_No, Element_Portion)], Site_No ~ Element_Portion, value.var = "Immature_Proportion", fill = 0))[, 2:(nw_anatolian_mixmod_data[, .N, Element_Portion][, .N] + 1)],
+  #Measurement observations
+  Measurement_obs = nw_anatolian_mixmod_data[, Measurement_value],
+  Measurement_sd = nw_anatolian_mixmod_data[, Measurement_value * 0.01],
+  Reference_obs = nw_anatolian_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
+  Reference_sd = nw_anatolian_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
+  Measurement_Set = nw_anatolian_mixmod_data[, Measurement_Set],
+  Specimen = nw_anatolian_mixmod_data[, Specimen_No],
+  #Demographic observations
+  N_Immature_obs = nw_anatolian_demographic_observations[, .N],
+  Immature_obs_site = nw_anatolian_demographic_observations[, Site_No],
+  Immature_obs = nw_anatolian_demographic_observations[, N_Unfused],
+  Immature_obs_n = nw_anatolian_demographic_observations[, N_Ageable],
+  N_Female_obs = nw_anatolian_demographic_observations[, .N],
+  Female_obs_site = nw_anatolian_demographic_observations[, Site_No],
+  Female_obs = nw_anatolian_demographic_observations[, N_Female],
+  Female_obs_n = nw_anatolian_demographic_observations[, N_Sexable],
+  #Prior distributions for hyper-parameters
+  prior_theta_raw_1 = c(-0.5, 1.5),
+  prior_theta_raw_2 = c(0, 1.5),
+  prior_mu_female = c(-0.1, 0.1),
+  prior_logdelta_immature = c(-3.5, 0.5),
+  prior_logdelta_male = c(-2, 0.5),
+  prior_logsigma_immature = c(-3.05, 0.25),
+  prior_logsigma_female = c(-3.1, 0.2),
+  prior_logsigma_male = c(-3.1, 0.2)
+)
+
+multisite_mixture_stanmodel <- cmdstan_model("./Scripts/LSI_mixture_model_multisite.stan")
+nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
+  data = nw_anatolian_mixmod_standata,
+  chains = 4,
+  parallel_chains = 4,
+  refresh = 250,
+  adapt_delta = 0.99,
+  seed = 1527876519,
+  max_treedepth = 15
+)
+#
+nw_anatolian_multisite_stanfit <- rstan::read_stan_csv(nw_anatolian_multisite_samples$output_files())
+nw_anatolian_post <- extract(nw_anatolian_multisite_stanfit)
+#
+table_nw_anatolian_site_parameters <- data.table(nw_anatolian_multisite_samples$summary(c("site_theta", "site_mu_immature", "site_mu_female", "site_mu_male", "site_sigma_immature", "site_sigma_female", "site_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `$5\\%$ Quantile` = round(q5, 2), `$95\\%$ Quantile` = round(q95, 2), `$\\hat{R}$` = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+
+####Creating supplemental tables 1-5 (Simulated Results, Simulated Demographic Observations, Archaeological Results)####
+
+#Simulated Demographic Observations (as a single table)
+simulated_demographic_observations <- rbind(single_assemblage_demographic_observations,
+                                            multisite_demographic_observations)
+
+#Measurement assemblages and posterior mean of membership probabilities for specimens: Simulations
+simulated_single_assemblage_results <- single_assemblage_mixmod_data[, .N, .(Individual_No, Specimen_No, Element, Immature, Group)][order(Specimen_No), .(Individual_No, Specimen_No, Element, Immature, Group, p_immature = round(colMeans(single_assemblage_post$specimen_prob[, , 1]), 2), p_female = round(colMeans(single_assemblage_post$specimen_prob[, , 2]), 2), p_male = round(colMeans(single_assemblage_post$specimen_prob[, , 3]), 2))]
+#
+simulated_multisite_results <- multisite_mixmod_data[, .N, .(Site_No, Individual_No, Specimen_No, Element, Immature, Group)][order(Specimen_No), .(Site_No, Individual_No, Specimen_No, Element, Immature, Group, p_immature = round(colMeans(multisite_post$specimen_prob[, , 1]), 2), p_female = round(colMeans(multisite_post$specimen_prob[, , 2]), 2), p_male = round(colMeans(multisite_post$specimen_prob[, , 3]), 2))]
+
+#Measurement assemblages and posterior mean of membership probabilities for specimens: Archaeological Case Studies
+pinarbasi_results <- pinarbasi_mixmod_data[, .N, .(Specimen_No, Element, Immature)][order(Specimen_No), .(Specimen_No, Element, p_immature = round(colMeans(pinarbasi_post$specimen_prob[, , 1]), 2), p_female = round(colMeans(pinarbasi_post$specimen_prob[, , 2]), 2), p_male = round(colMeans(pinarbasi_post$specimen_prob[, , 3]), 2))]
+#
+nw_anatolian_results <- nw_anatolian_mixmod_data[, .N, .(Specimen_No, Site_No, Site, Element, Immature)][order(Specimen_No), .(Specimen_No, Site_No, Site, Element, p_immature = round(colMeans(nw_anatolian_post$specimen_prob[, , 1]), 2), p_female = round(colMeans(nw_anatolian_post$specimen_prob[, , 2]), 2), p_male = round(colMeans(nw_anatolian_post$specimen_prob[, , 3]), 2))]
+
+####Export the relevant files####
+write.csv(simulated_demographic_observations, file = "./Output/Tables/Table S1 - Simulated Demographic Observations.csv", row.names = F)
+write.csv(simulated_single_assemblage_results, file = "./Output/Tables/Table S2 - Single Assemblage Simulation Results (Measurement Assemblage).csv", row.names = F)
+write.csv(simulated_multisite_results, file = "./Output/Tables/Table S3 - Multisite Simulation Results (Measurement Assemblage).csv", row.names = F)
+#
+write.csv(pinarbasi_results, file = "./Output/Tables/Table S4 - Pinarbasi Sheep Results (Measurement Assemblage).csv", row.names = F)
+write.csv(nw_anatolian_results, file = "./Output/Tables/Table S5 - NW Anatolian Cattle Results (Measurement Assemblage).csv", row.names = F)
+
+####Table S6: Single Simulation Model Summary####
+table_simulated_single_assemblage_model_parameters <- data.table(single_assemblage_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+parameter_names <- c("pi_1", "pi_2", "pi_3", "mu_1", "mu_2", "mu_3", "sigma_1", "sigma_2", "sigma_3")
+single_assemblage_overall_name <- "Single Assemblage Model"
+table_simulated_single_assemblage_model_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(single_assemblage_overall_name, x, sep = " ")))]
+#
+write.csv(table_simulated_single_assemblage_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S6.csv", row.names = F)
+
+####Table S7: Multisite Simulation Model Summary####
+table_simulated_multisite_model_parameters <- data.table(multisite_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+multisite_overall_name <- "Multisite Model"
+table_simulated_multisite_model_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(multisite_overall_name, x, sep = " ")))]
+#
+write.csv(table_simulated_multisite_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S7.csv", row.names = F)
+
+####Table S8: Multisite Simulation Site Summary####
+table_simulated_multisite_site_parameters <- data.table(multisite_samples$summary(c("site_theta", "site_mu_immature", "site_mu_female", "site_mu_male", "site_sigma_immature", "site_sigma_female", "site_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+simulated_multisite_site_names <- sapply(1:15, function(x) paste0("Site ", x))
+table_simulated_multisite_site_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(simulated_multisite_site_names, x, sep = " ")))]
+#
+write.csv(table_simulated_multisite_site_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S8.csv", row.names = F)
+
+####Table s9: Pinarbasi Model Summary####
+table_pinarbasi_model_parameters <- data.table(pinarbasi_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+pinarbasi_overall_name <- "Pinarbaşı B Sheep"
+table_pinarbasi_model_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(pinarbasi_overall_name, x, sep = " ")))]
+#
+write.csv(table_pinarbasi_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S9.csv", row.names = F)
+
+####Table S10: NW Anatolian Model Summary####
+table_nw_anatolian_model_parameters <- data.table(nw_anatolian_multisite_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+nw_anatolian_overall_name <- "NW Anatolian Cattle"
+table_nw_anatolian_model_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(nw_anatolian_overall_name, x, sep = " ")))]
+#
+write.csv(table_nw_anatolian_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S10.csv", row.names = F)
+
+####Table S11: NW Anatolian Site Summary####
+table_nw_anatolian_site_parameters <- data.table(nw_anatolian_multisite_samples$summary(c("site_theta", "site_mu_immature", "site_mu_female", "site_mu_male", "site_sigma_immature", "site_sigma_female", "site_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `5% Quantile` = round(q5, 2), `95% Quantile` = round(q95, 2), rhat = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
+nw_anatolian_site_names <- c("Barcın", "Neolithic Ilıpınar", "Menteşe", "Chalcolithic Ilıpınar")
+table_nw_anatolian_site_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(nw_anatolian_site_names, x, sep = " ")))]
+#
+write.csv(table_nw_anatolian_site_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `5% Quantile`, `95% Quantile`, `rhat`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)], file = "./Output/Tables/Table S11.csv", row.names = F)
+
+
+####Analyses to summarize the archaeological material (for in-text numbers and figures)####
+pinarbasi_element_name_key <- data.table(
+  Element = c("Ast", "Cal", "Hum", "Mtc_dist", "Mtt_dist", "Mtt_prox", "PH1", "Rad_dist", "Tib_dist", "Tib_prox", "Rad_prox", "Mtc_prox", "Pel", "PH2", "Uln"),
+  Full_Element_Name = c("Astragalus", "Calcaneus", "Humerus", "D. Metacarpal", "D. Metatarsal", "P. Metatarsal", "Proximal Phalanx", "D. Radius", "D. Tibia", "P. Tibia", "P. Radius", "P. Metacarpal", "Pelvis", "Middle Phalanx", "Ulna")
+)
+
+pinarbasi_pi_df <- data.table(Iteration = rep(1:4000, 3), 
+                              Group = rep(c("Immature", "Female", "Male"), each = 4000),
+                              theta = c(pinarbasi_post$grand_theta))
+#
+pinarbasi_element_pi_df <- data.table(Iteration = rep(rep(1:4000, 3), 10), 
+                                      Group = rep(rep(factor(c("Immature", "Female", "Male"), levels = c("Immature", "Female", "Male")), each = 4000), 10),
+                                      Element = rep(pinarbasi_mixmod_data[, .N, .(Element_Portion, Element)][order(Element_Portion), Element], each = 4000 * 3),
+                                      Element_Portion = rep(pinarbasi_mixmod_data[, .N, .(Element_Portion, Element)][order(Element_Portion), Element_Portion], each = 4000 * 3),
+                                      theta = c(pinarbasi_post$theta))
+#
+nw_anatolian_site_mu_df <- data.table(Iteration = rep(rep(1:4000, 3), 4),
+                                      Group = rep(factor(c("Immature", "Female", "Male"), levels = c("Immature", "Female", "Male")), each = 4000 * 4),
+                                      Site = rep(rep(nw_anatolian_mixmod_data[, .N, .(Site, Site_No)][order(Site_No), Site], each = 4000), 3),
+                                      Site_No = rep(rep(nw_anatolian_mixmod_data[, .N, .(Site, Site_No)][order(Site_No), Site_No], each = 4000), 3),
+                                      mu = c(cbind(nw_anatolian_post$site_mu_immature, nw_anatolian_post$site_mu_female, nw_anatolian_post$site_mu_male)))
+#
+nw_anatolian_mu_contrasts <- nw_anatolian_site_mu_df[, .(Site = ifelse(Site_No %in% 1, "Barcin", ifelse(Site_No %in% 2, "Ilipinar_Neolithic", ifelse(Site_No %in% 3, "Mentese", "Ilipinar_Chalcolithic"))), Site_No, Barcin = mu - mu[Site_No %in% 1], Ilipinar_Neolithic = mu - mu[Site_No %in% 2], Mentese = mu - mu[Site_No %in% 3], Ilipinar_Chalcolithic = mu - mu[Site_No %in% 4]), .(Iteration, Group)]
+nw_anatolian_mu_contrasts <- melt(nw_anatolian_mu_contrasts, id.vars = c("Iteration", "Group", "Site_No", "Site"), measure.vars = c("Barcin", "Ilipinar_Neolithic", "Mentese", "Ilipinar_Chalcolithic"), variable.name = "Comparand", value.name = "Contrast")[Site != Comparand]
+nw_anatolian_mu_contrasts[, "Comparison" := .(paste(Comparand, Site, sep = "."))]
+#
+nw_anatolian_posterior_data <- data.table(Iteration = rep(1:4000, 4), Site_No = rep(1:4, each = 4000), Site = rep(nw_anatolian_mixmod_data[, .N, .(Site_No, Site)][order(Site_No), Site], each = 4000), p_immature = c(nw_anatolian_post$site_p_immature), sex_ratio = c(nw_anatolian_post$site_theta_female), mu_female = c(nw_anatolian_post$site_mu_female))
+nw_anatolian_posterior_data[, euclidean_dist_demographic := .(sqrt((p_immature - mean(p_immature))^2 + (sex_ratio - mean(sex_ratio))^2)), Site_No]
+#
+hull_data <- rbind(
+  rbindlist(lapply(1:4, function(x) data.table(Site_No = x, CI = 1.00, nw_anatolian_posterior_data[Site_No %in% x][chull(nw_anatolian_posterior_data[Site_No %in% x, .(p_immature, sex_ratio)]), .(p_immature, sex_ratio)]))),
+  rbindlist(lapply(1:4, function(x) data.table(Site_No = x, CI = 0.95, nw_anatolian_posterior_data[Site_No %in% x & euclidean_dist_demographic <= quantile(euclidean_dist_demographic, 0.95)][chull(nw_anatolian_posterior_data[Site_No %in% x & euclidean_dist_demographic <= quantile(euclidean_dist_demographic, 0.95), .(p_immature, sex_ratio)]), .(p_immature, sex_ratio)]))),
+  rbindlist(lapply(1:4, function(x) data.table(Site_No = x, CI = 0.80, nw_anatolian_posterior_data[Site_No %in% x & euclidean_dist_demographic <= quantile(euclidean_dist_demographic, 0.80)][chull(nw_anatolian_posterior_data[Site_No %in% x & euclidean_dist_demographic <= quantile(euclidean_dist_demographic, 0.80), .(p_immature, sex_ratio)]), .(p_immature, sex_ratio)])))
+)
+#
+ilipinar2_mu2_contrasts <- nw_anatolian_mu_contrasts[Comparand %in% "Ilipinar_Chalcolithic" & Group %in% "Female", Contrast, Site]
+
+####Summarizing the archaeological assemblages####
+pinarbasi_posterior_summary <- list(
+  pinarbasi_pi1_median = paste0(round(100 * median(pinarbasi_post$p_immature), 0), "%"),
+  pinarbasi_pi1_95CI = paste0(round(100 * quantile(pinarbasi_post$p_immature, 0.025), 0), "-", round(100 * quantile(pinarbasi_post$p_immature, 0.975), 0), "%"),
+  pinarbasi_age_observation = pinarbasi_demographic_observations[, paste0("(", N_Unfused, " / ", N_Ageable, " = ", round(100 * (N_Unfused / N_Ageable), 0), "%)")],
+  pinarbasi_femaletheta_over50 = paste0(round(100 * mean(pinarbasi_post$theta_female >= 0.5), 0), "%"),
+  pinarbasi_measured_specimens_N = pinarbasi_measured_assemblage[, .N],
+  pinarbasi_modeled_specimens_N = pinarbasi_modeled_assemblage[, .N],
+  pinarbasi_full_specimens_N = pinarbasi_full_assemblage[, .N]
+)
+#
+nw_anatolian_posterior_summary <- list(
+  ilipinar2_avg_contrast = ilipinar2_mu2_contrasts[, .(avg_contrast = mean(Contrast)), Site][, paste0(round(100 * min(avg_contrast), 0), "-", round(100 * max(avg_contrast), 0), "%")],
+  ilipinar2_sex_fusion_bias = paste0(nw_full_anatolian_fusion[Stage %in% 4 & Site_No %in% 4, .(N = sum(N)), .(Iteration, Fusion, Simulated_Group)][Simulated_Group %in% c("Female", "Male"), .(Pct_Fused = N[Fusion %in% "Fused"] / sum(N)), .(Iteration, Simulated_Group)][, .(Female_Minus_Male = Pct_Fused[Simulated_Group %in% "Female"] - Pct_Fused[Simulated_Group %in% "Male"]), .(Iteration)][, round(100 * mean(Female_Minus_Male >= 0, na.rm = T), 0)], "%"),
+  barcin_thetafemale_over60 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 1] >= 0.60), 0), "%"),
+  barcin_thetafemale_over75 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 1] >= 0.75), 0), "%"),
+  ilipinar1_thetafemale_over80 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 2] > 0.80), 0), "%")
+)
