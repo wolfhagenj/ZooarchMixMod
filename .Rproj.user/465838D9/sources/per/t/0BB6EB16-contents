@@ -631,7 +631,7 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  seed = 1303894618,
+  seed = 1426119231, #change seed to generalize/if the data are changed
   adapt_delta = 0.90,
   max_treedepth = 15
 )
@@ -790,7 +790,7 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   parallel_chains = 4,
   refresh = 250,
   adapt_delta = 0.99,
-  seed = 1527876519,
+#  seed = 1527876519,
   max_treedepth = 15
 )
 #
