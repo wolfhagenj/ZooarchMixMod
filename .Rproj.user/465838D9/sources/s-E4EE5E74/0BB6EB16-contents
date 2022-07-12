@@ -789,7 +789,7 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  adapt_delta = 0.99,
+  adapt_delta = 0.90,
 #  seed = 1527876519,
   max_treedepth = 15
 )
@@ -905,15 +905,6 @@ hull_data <- rbind(
 ilipinar2_mu2_contrasts <- nw_anatolian_mu_contrasts[Comparand %in% "Ilipinar_Chalcolithic" & Group %in% "Female", Contrast, Site]
 
 ####Summarizing the archaeological assemblages####
-pinarbasi_posterior_summary <- list(
-  pinarbasi_pi1_median = paste0(round(100 * median(pinarbasi_post$p_immature), 0), "%"),
-  pinarbasi_pi1_95CI = paste0(round(100 * quantile(pinarbasi_post$p_immature, 0.025), 0), "-", round(100 * quantile(pinarbasi_post$p_immature, 0.975), 0), "%"),
-  pinarbasi_age_observation = pinarbasi_demographic_observations[, paste0("(", N_Unfused, " / ", N_Ageable, " = ", round(100 * (N_Unfused / N_Ageable), 0), "%)")],
-  pinarbasi_femaletheta_over50 = paste0(round(100 * mean(pinarbasi_post$theta_female >= 0.5), 0), "%"),
-  pinarbasi_measured_specimens_N = pinarbasi_measured_assemblage[, .N],
-  pinarbasi_modeled_specimens_N = pinarbasi_modeled_assemblage[, .N],
-  pinarbasi_full_specimens_N = pinarbasi_full_assemblage[, .N]
-)
 #
 nw_anatolian_posterior_summary <- list(
   ilipinar2_avg_contrast = ilipinar2_mu2_contrasts[, .(avg_contrast = mean(Contrast)), Site][, paste0(round(100 * min(avg_contrast), 0), "-", round(100 * max(avg_contrast), 0), "%")],
@@ -921,4 +912,16 @@ nw_anatolian_posterior_summary <- list(
   barcin_thetafemale_over60 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 1] >= 0.60), 0), "%"),
   barcin_thetafemale_over75 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 1] >= 0.75), 0), "%"),
   ilipinar1_thetafemale_over80 = paste0(round(100 * mean(nw_anatolian_post$site_theta_female[, 2] > 0.80), 0), "%")
+)
+#
+pinarbasi_posterior_summary <- list(
+  pinarbasi_pi1_median = paste0(round(100 * median(pinarbasi_post$p_immature), 0), "%"),
+  pinarbasi_pi1_95CI = paste0(round(100 * quantile(pinarbasi_post$p_immature, 0.025), 0), "-", round(100 * quantile(pinarbasi_post$p_immature, 0.975), 0), "%"),
+  pinarbasi_age_observation = pinarbasi_demographic_observations[, paste0("(", N_Unfused, " / ", N_Ageable, " = ", round(100 * (N_Unfused / N_Ageable), 0), "%)")],
+  pinarbasi_femaletheta_over50 = paste0(round(100 * mean(pinarbasi_post$theta_female >= 0.5), 0), "%"),
+  pinarbasi_measured_specimens_N = pinarbasi_measured_assemblage[, .N],
+  pinarbasi_modeled_specimens_N = pinarbasi_modeled_assemblage[, .N],
+  pinarbasi_full_specimens_N = pinarbasi_full_assemblage[, .N],
+  overall_female_size_range = paste0(round(quantile(pinarbasi_post$grand_mu_female, 0.025), 2), " - ", round(quantile(pinarbasi_post$grand_mu_female, 0.975), 2)),
+  overall_female_pct_range = paste0(round(100 * quantile(pinarbasi_post$grand_theta[, 2], 0.025), 0), "-", round(100 * quantile(pinarbasi_post$grand_theta[, 2], 0.975), 0), "%")
 )

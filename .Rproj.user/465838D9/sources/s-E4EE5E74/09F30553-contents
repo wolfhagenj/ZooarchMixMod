@@ -62,7 +62,7 @@ Understanding the age and sex composition of zooarchaeological assemblages can r
 
 Different hunting and herding strategies target specific classes of animals among a herd that are determined by the animal’s age and sex [@dahl_hjort_1976;@stiner_1990]. In addition to human-driven goals, sex differences in habitat use, diet quality, and reproductive capabilities among ungulate prey species contribute to the susceptibility and desirability of males and females at different ages to human exploitation [@corti_shackleton_2002; @post_etal_2001; @ruckstuhl_neuhaus_2002; @ruckstuhl_2007; @said_etal_2011]. The combination of these factors would thus affect the probability that bones from different classes of animals would become incorporated into a zooarchaeological assemblage, even if taphonomic factors make it impossible to reconstruct death assemblages exactly [@lyman_2008]. The age and sex composition of zooarchaeological assemblages can therefore reflect anthropologically-relevant aspects of past hunting strategies—like seasonal site use and scale of exploitation [@speth_2013]—or general management goals of past herding strategies [e.g., @payne_1973; @redding_1984].
 
-Reconstructing the age and sex composition of a zooarchaeological assemblage can enrich our understanding of past human-animal interactions by complementing mortality profiles and inter-assemblage comparisons. However, this task is complicated by the disaggregated nature of faunal assemblages. Because articulated remains are rare, zooarchaeologists typically cannot relate elements that are morphologically distinct between the sexes (e.g., the pelvis) to other elements that can provide information about the animal’s age-at-death (e.g., limb bones or mandibles). We can, though, take advantage of the general pattern of sexual dimorphism among ungulate taxa to use size differences in limb bones to distinguish between males and females. When combined with size index methods that allow researchers to relate measurements from different elements together, this approach allows general descriptions of the sex ratio in an assemblage that can be used to identify changes in these sex ratios or overall biometry over time [e.g., @grigson_1989;@arbuckle_atici_2013].
+Reconstructing the age and sex composition of a zooarchaeological assemblage can enrich our understanding of past human-animal interactions by complementing mortality profiles and inter-assemblage comparisons. However, this task is complicated by the disaggregated nature of faunal assemblages. Because articulated remains are rare, zooarchaeologists typically cannot relate elements that are morphologically distinct between the sexes (e.g., the pelvis) to other elements that can provide information about the animal’s age-at-death (e.g., limb bones or mandibles). We can, though, take advantage of the general pattern of sexual dimorphism among ungulate taxa to use size differences in limb bones to distinguish between males and females. When combined with size index methods that allow researchers to relate measurements from different elements together, this approach allows general descriptions of the sex ratio in an assemblage that can be used to identify changes in these sex ratios or overall biometry over time [e.g., @grigson_1989; @arbuckle_atici_2013].
 
 Unlike morphological differences, though, much greater overlap exists in the metrics of individual male and female animals, meaning that no clear thresholds can be identified between males and females without maintaining a large area of unidentifiability; this is compounded by the inclusion of immature animals from unfused specimens or from elements that exhibit post-fusion growth [@popkin_etal_2012]. These complications make it difficult to describe the sex composition of an assemblage based solely on absolute metrical identifications of sex since large parts of the assemblage may be left unidentified, decreasing our ability to make reliable inferences about the entire assemblage.
 
@@ -88,7 +88,7 @@ definitions <- data.table(
                  'Assemblage of specimens from a defined number of element portions of a specific taxon. Includes element portions that do not have any observed measurements. Measurability is assumed to be effectively random (i.e., unrelated to whether a specimen came from an immature, female, or male individual).')
 )
 
-#export the table
+#export the table in csv
 write.csv(definitions, file = "./Output/Tables/Table 1 - Definitions.csv", row.names = F)
 
 #create the table in the file
@@ -123,7 +123,7 @@ In addition to a specimen’s LSI value, the model needs two additional observed
 
 The model estimates measurement error for different observed quantities that are used in the likelihood. Measurements on both the archaeological specimens and the standard values used to calculate LSI values are assumed to have a 1% measurement error [@popkin_etal_2012: Figure 6; @breslawski_byers_2015]. This 1% value comes from an evaluation of the @breslawski_byers_2015 measurement data, where the average standard deviation of repeated measurements on bison radius proximal breadth measurements was 1.1% the average value of the measurement. This means that each measurement is given a standard deviation based on the observed value, which is used to estimate the “modeled” measurement based on the observation we have. These modeled measurements are then used to calculate the LSI value for that measurement ($\operatorname{LSI}_{\operatorname{measurement}}$).
 
-Because specimens can have multiple measurements that are included in the mixture model on them (e.g., a distal humerus with both a Bd and BT observations or a complete radius with Bp and Bd observations), the mixture model uses specimen-specific LSI values ($\operatorname{LSI}_{\operatorname{specimen}}$) that are related to $\operatorname{LSI}_{\operatorname{measurement}}$ values in the same way. $\operatorname{LSI}_{\operatorname{measurement}}$ values are the “observations” with a standard deviation of 0.01 (in $\operatorname{LSI}_e$ scale) based on intra-individual variation of $\operatorname{LSI}_e$ values for the Popkin, et al. (2012) sheep using the *Ovis orientalis* female standard animal (FMC 57951) from Uerpmann and Uerpmann [-@uerpmann_uerpmann_1994, Table 12].
+Because specimens can have multiple measurements that are included in the mixture model on them (e.g., a distal humerus with both a Bd and BT observations or a complete radius with Bp and Bd observations), the mixture model uses specimen-specific LSI values ($\operatorname{LSI}_{\operatorname{specimen}}$) that are related to $\operatorname{LSI}_{\operatorname{measurement}}$ values in the same way. $\operatorname{LSI}_{\operatorname{measurement}}$ values are the “observations” with a standard deviation of 0.01 (in $\operatorname{LSI}_e$ scale) based on intra-individual variation of $\operatorname{LSI}_e$ values for the @popkin_etal_2012 sheep using the *Ovis orientalis* female standard animal (FMC 57951) from Uerpmann and Uerpmann [-@uerpmann_uerpmann_1994, Table 12].
 
 *Observation Error Equations:*
 \begin{equation}
@@ -153,11 +153,11 @@ Prior distributions are central to Bayesian inference and describe one’s prior
 
 The prior distributions in this model are focused on describing previous beliefs about the value of the mixture model hyper-parameters, as the element portion-specific parameters are derived from these distributions. Mixture modeling performs well with unconstrained parameters values because it is more straightforward to estimate variation across element portions, meaning that constrained parameters-—those where the range of possible values depends on the values of other parameters—-must first be transformed into related unconstrained parameters [@betancourt_2017]. The following sub-sections describe the necessary transformations for different sets of the mixture model parameters, describing the unconstrained parameters that can be modeled and the transformations that result in the mixture model parameters. While these sections use the mixture model parameter notations, prior distributions are for the ‘central tendency’ hyper-parameter for the described unconstrained parameter.
 
-It is important to remember that for all of these prior distributions are arbitrary choices made by the researcher, regardless of whether the distributions are based on specific animal populations or on reference priors. Other researchers could and should use different prior distributions to best reflect their intuition about likely parameter values for particular case studies. This also highlight the importance of reporting the prior distributions used in a Bayesian analysis to ensure replicability. Examining the implications of different prior distributions is an important step in the development of Bayesian models, one that should be regularly tested even before models are fit to datasets [@gelman_2020_workflow].
+It is important to remember that for all of these prior distributions are arbitrary choices made by the researcher, regardless of whether the distributions are based on specific animal populations or on reference priors. Other researchers could and should use different prior distributions to best reflect their intuition about likely parameter values for particular case studies. This also highlight the importance of reporting the prior distributions used in a Bayesian analysis to ensure replicability. Examining the implications of different prior distributions is an important step in the development of Bayesian models, one that should be regularly tested even before models are fit to datasets [@gelman_etal_2020_workflow].
 
 #### *2.3.1 Mixture Proportion Priors*\
 
-Prior distributions for the mixture components reflect our prior beliefs about the relative proportions of immature, adult-sized females, and adult-sized males in the assemblage. The three mixture components ($\pi_1$, $\pi_2$, $\pi_3$) are a three-value unit simplex, meaning that the values are constrained as a group to sum up to one. This means that the simplex can be described by only two variables because the third value cannot vary once those two values are known. The model uses two unconstrained variables ($\theta_1$ and $\theta_2$) to describe the unit simplex of $\pi$ values. These $\theta$ values are related back to $\pi$ values using the following ‘stick-breaking’ transformation by iteratively estimating the relative proportions of the simplex taken up by each $\theta$ value [@stan_language_2.29: Section 10.7].
+Prior distributions for the mixture components reflect our prior beliefs about the relative proportions of immature, adult-sized females, and adult-sized males in the assemblage. The three mixture components ($\pi_1$, $\pi_2$, $\pi_3$) are a three-value unit simplex, meaning that the values are constrained as a group to sum up to one. This means that the simplex can be described by only two variables because the third value cannot vary once those two values are known. The model uses two unconstrained variables ($\theta_1$ and $\theta_2$) to describe the unit simplex of $\pi$ values. These $\theta$ values are related back to $\pi$ values using the following ‘stick-breaking’ transformation by iteratively estimating the relative proportions of the simplex taken up by each $\theta$ value [@stan_language_2.29, Section 10.7].
 
 *Stick-Breaking Transformations:*
 \begin{equation}
@@ -921,8 +921,8 @@ table_3 <- dcast(rbind(single_assemblage_mixmod_data[, .(.N, Assemblage = "Singl
 #add totals column
 table_3[, Total := sum(.SD), Assemblage, .SDcols = names(table_3)[-(1:3)]]
 
-#export table
-write.csv(table_3, file = "./Output/Tables/Table 3 - Simulation Demographics.csv", row.names = F)
+#export table in csv
+write.csv(table_3, file = "./Output/Tables/Table 3 - Simulation Composition.csv", row.names = F)
 
 #add in footnotes manually (for in-pdf table)
 table_3[Size %in% "1.20 (Males)", Size := paste0("1.20", footnote_marker_symbol(1, "latex"))]
@@ -1324,7 +1324,7 @@ The Bayesian multilevel mixture model is applied to two archaeological case stud
 
 #### *3.2.1 Single Assemblage: Biometric Analysis of Sheep from 7th Millennium BCE Central Anatolia (Pinarbaşı B)*\
 
-The site of Pinarbaşı, located in the Konya Plain of central Turkey, consists of a series of rock shelter and open-air sites at the foothills of the Karadağ volcanic region and Lake Hotamiş and associated wetlands [@baird_etal_2011; @kabukcu_2017]. This case study examines the Pinarbaşı B late Neolithic occupation, which is dated to the second half of the 7th millennium BCE and includes a large number of domesticated sheep and goat remains [@baird_2011; @carruthers_2005]. @carruthers_2005 analyzed fauna from the 1994-1995 excavations by Trevor Watkins [@watkins_1996], interpreting the presence of fetal sheep remains and other juvenile remains in the assemblage as evidence for herders penning sheep on-site. The Neolithic assemblage was thus described as the result of seasonal occupation by sheep and goat herders during the lambing season and the fall, with culling in the spring possibly focused on young males [@carruthers_2005]. This analysis makes several claims that can be evaluated with the Bayesian multilevel mixture model: the dominance of immature remains, a female-dominated adult sex ratio, and sex-specific differences in fusion rates for later-fusing elements.
+The site of Pinarbaşı, located in the Konya Plain of central Turkey, consists of a series of rock shelter and open-air sites at the foothills of the Karadağ volcanic region and Lake Hotamiş and associated wetlands [@baird_etal_2011; @kabukcu_2017]. This case study examines the Pinarbaşı B late Neolithic occupation, which is dated to the second half of the 7th millennium BCE and includes a large number of domesticated sheep and goat remains [@baird_etal_2011; @carruthers_2005]. @carruthers_2005 analyzed fauna from the 1994-1995 excavations by Trevor Watkins [@watkins_1996], interpreting the presence of fetal sheep remains and other juvenile remains in the assemblage as evidence for herders penning sheep on-site. The Neolithic assemblage was thus described as the result of seasonal occupation by sheep and goat herders during the lambing season and the fall, with culling in the spring possibly focused on young males [@carruthers_2005]. This analysis makes several claims that can be evaluated with the Bayesian multilevel mixture model: the dominance of immature remains, a female-dominated adult sex ratio, and sex-specific differences in fusion rates for later-fusing elements.
 
 The Bayesian multilevel mixture model for the late Neolithic Pinarbaşı B assemblage uses `r archaeological_sites_summary$pinarbasi_msres_N` sheep measurements from `r archaeological_sites_summary$pinarbasi_specimens_N` specimens (see Table 4). In addition to these measurements, the observed proportion of immature animals from unfused first and second phalanges is `r archaeological_sites_summary$pinarbasi_age_observation`, including specimens identified to sheep and to sheep/goat. There are `r archaeological_sites_summary$pinarbasi_sexable_pelves_N` observed sheep (or sheep/goat) pelvis bones with sex identifications; this is entered into the model by having an observed adult sex ratio for the assemblage of `r archaeological_sites_summary$pinarbasi_sex_observation` (females / females + males). All data come from the Pinarbaşı faunal assemblage uploaded to OpenContext, focusing only on specimens in the Site B Neolithic contexts [@carruthers_pinarbasi_data]. The Pinarbaşı B sheep model uses the same prior distribution definitions for the model hyper-parameters as the single assemblage simulation since both models, even though the sheep body sizes likely differ between the two populations, showcasing the flexibility of the standard prior distribution definitions.
 
@@ -1349,18 +1349,21 @@ Four archaeological components from three sites are used in this case study, loc
 The northwest Anatolian cattle bone assemblages consists of `r archaeological_sites_summary$nw_anatolian_cattle_specimens_N` measured specimens spread unevenly across the four components (Barcın Höyük N = `r archaeological_sites_summary$barcin_specimens_N`, Menteşe Höyük N = `r archaeological_sites_summary$mentese_specimens_N`, Neolithic Ilıpınar N = `r archaeological_sites_summary$ilipinar1_specimens_N`, Chalcolithic Ilıpınar N = `r archaeological_sites_summary$ilipinar2_specimens_N`). All measured *Bos* remains were included in the analysis, rather than separating out those identified as aurochs (*Bos primigenius*, N = `r archaeological_sites_summary$ilipinar_measured_bos_primigenius_N`) or identified only to *Bos* spp. (N = `r archaeological_sites_summary$ilipinar_measured_bos_spp_N`) in the Ilıpınar Höyük dataset; all specimens were only labeled as “Bos” in the Menteşe Höyük dataset. Table 5 shows the measurement composition of the four northwest Anatolian assemblages. Demographic observations of the proportion of immature animals and the adult sex ratio for each assemblage describe these assemblage-level parameters. For the four northwest Anatolian assemblages, estimates of the assemblage-level proportion of immature specimens based on the fusion rates of proximal and middle phalanges for cattle specimens are `r archaeological_sites_summary$barcin_age_observation` for Barcın Höyük, `r archaeological_sites_summary$ilipinar1_age_observation` for Neolithic Ilıpınar, `r archaeological_sites_summary$mentese_age_observation` for Menteşe Höyük, and `r archaeological_sites_summary$ilipinar2_age_observation` for Chalcolithic Ilıpınar. The observed adult sex ratios (females / females + males) based on cattle pelvis morphology are `r archaeological_sites_summary$barcin_sex_observation` for Barcın Höyük, `r archaeological_sites_summary$ilipinar1_sex_observation` for Neolithic Ilıpınar, `r archaeological_sites_summary$mentese_sex_observation` for Menteşe Höyük, and `r archaeological_sites_summary$ilipinar2_sex_observation` for Chalcolithic Ilıpınar. As in the Pinarbaşı B example, observations of 0 / 0 impart no information onto the prior distribution of the adult sex ratio. All demographic and measurement data come from the OpenContext datasets [@buitenhuis_ilipinar_data; @galik_barcin_data; @gourichon_helmer_mentese_data]; the ‘R script for replication’ includes the steps for data processing and analysis.
 
 ```{r table_5: Elemental composition of the Northwest Anatolian cattle measurement assemblages, echo = FALSE}
-#exporting table
-write.csv(table_5, file = "./Output/Tables/Table 5 - Northwest Anatolian Composition.csv", row.names = F)
-
 #
 kbl(table_5, caption = "Elemental composition of the Northwest Anatolian cattle measurement assemblages", booktabs = T, linesep = '') %>%
   kable_styling(latex_options = c("hold_position", "scale_down")) %>%
   row_spec(nrow(table_5), bold = TRUE)
+
+#exporting table to csv
+#first, change the names to ensure legibility in csv format
+csv_table_5 <- table_5
+names(csv_table_5) <- c("Element Portion", "Barcin Hoyuk", "Neolithic Ilipinar", "Chalcolithic Ilipinar", "Mentese Hoyuk") #removes diacritics
+write.csv(csv_table_5, file = "./Output/Tables/Table 5 - Northwest Anatolian Composition.csv", row.names = F)
 ```
 
 Previous syntheses of the Late Neolithic and Early Chalcolithic animal economies in northwest Anatolia provide several assumptions about the age and sex structure of cattle bone assemblages that can be evaluated with the results of the Bayesian multilevel mixture model. First, the general cultural continuity of the assemblages suggests that the biometry and composition of cattle bone assemblages may be similar at the sites, having been produced by similar processes [e.g., @cakirlar_2013; @ozdogan_2019]. Second, the widespread evidence of milk consumption from pottery residue analyses from these sites and others in the region [@evershed_etal_2008; @thissen_etal_2010] suggest that cattle were managed for milk production [@gourichon_helmer_2008; @roodenberg_2012_article]; thus, one may expect that each assemblage has a female-dominated sex ratio and potentially higher fusion rates for later-fusing elements among females than males. The multilevel modeling results can be used to evaluate the feasibility of these assumptions by examining posterior distributions of relevant parameters and simulations of sex-specific fusion rates.
 
-Because the model is a multisite model and deals with a different taxon than the original simulations, the prior distributions for the model hyper-parameters are again redefined to reflect different expectations of biological feasibility. While the multisite simulation provides useful prior distribution definitions for most of the parameters, two other parameters (average body size of females $\mu_2$ and index of sexual dimorphism $\log \delta_2$) should be further changed because of different expectations modeling cattle rather than sheep. The change in the prior distribution definition of $\mu_2$ reflects the fact that the standard measurements for cattle come from an aurochs female [@degerbol_1970], which is expected to be larger than the domestic cattle females in the assemblages. Cattle are expected to be more sexually dimorphic than sheep, which is reflected in increasing the average expected value of $\log_e \delta_2$, resulting in an expectation of `r round(exp(-2), 2)` $\operatorname{LSI}_e$ units between males and females on average. This is slightly lower than index of sexual dimorphism seen in the @degerbol_1970 aurochs specimens [@grigson_1989, Figure 2, which uses $\operatorname{LSI}_{10}$; the equivalent size difference is `r round(log(1 + exp(-2), base = 10), 2)` on the $\operatorname{LSI}_{10}$ scale], though domestic cattle may be expected to be less seuxally dimorphic than their wild counterparts [e.g., @tchernov_horwitz_1991].
+Because the model is a multisite model and deals with a different taxon than the original simulations, the prior distributions for the model hyper-parameters are again redefined to reflect different expectations of biological feasibility. While the multisite simulation provides useful prior distribution definitions for most of the parameters, two other parameters (average body size of females $\mu_2$ and index of sexual dimorphism $\log \delta_2$) should be further changed because of different expectations modeling cattle rather than sheep. The change in the prior distribution definition of $\mu_2$ reflects the fact that the standard measurements for cattle come from an aurochs female [@degerbol_1970], which is expected to be larger than the domestic cattle females in the assemblages. Cattle are expected to be more sexually dimorphic than sheep, which is reflected in increasing the average expected value of $\log_e \delta_2$, resulting in an expectation of `r round(exp(-2), 2)` $\operatorname{LSI}_e$ units between males and females on average. This is slightly lower than index of sexual dimorphism seen in the @degerbol_1970 aurochs specimens [@grigson_1989, Figure 2], which uses the $\operatorname{LSI}_{10}$ scale; the equivalent size difference is `r round(log(1 + exp(-2), base = 10), 2)` on the $\operatorname{LSI}_{10}$ scale, though domestic cattle may be expected to be less seuxally dimorphic than their wild counterparts [e.g., @tchernov_horwitz_1991].
 
 *Prior Distribution Definitions for the Northwest Anatolian Cattle Model Hyper-Parameters*
 \begin{equation}
@@ -2428,7 +2431,9 @@ pinarbasi_posterior_summary <- list(
   pinarbasi_femaletheta_over50 = paste0(round(100 * mean(pinarbasi_post$theta_female >= 0.5), 0), "%"),
   pinarbasi_measured_specimens_N = pinarbasi_measured_assemblage[, .N],
   pinarbasi_modeled_specimens_N = pinarbasi_modeled_assemblage[, .N],
-  pinarbasi_full_specimens_N = pinarbasi_full_assemblage[, .N]
+  pinarbasi_full_specimens_N = pinarbasi_full_assemblage[, .N],
+  overall_female_size_range = paste0(round(quantile(pinarbasi_post$grand_mu_female, 0.025), 2), " - ", round(quantile(pinarbasi_post$grand_mu_female, 0.975), 2)),
+  overall_female_pct_range = paste0(round(100 * quantile(pinarbasi_post$grand_theta[, 2], 0.025), 0), "-", round(100 * quantile(pinarbasi_post$grand_theta[, 2], 0.975), 0), "%")
 )
 #
 nw_anatolian_posterior_summary <- list(
@@ -2635,12 +2640,12 @@ pinarbasi_results <- pinarbasi_mixmod_data[, .N, .(Specimen_No, Element, Immatur
 nw_anatolian_results <- nw_anatolian_mixmod_data[, .N, .(Specimen_No, Site_No, Site, Element, Immature)][order(Specimen_No), .(Specimen_No, Site_No, Site, Element, p_immature = round(colMeans(nw_anatolian_post$specimen_prob[, , 1]), 2), p_female = round(colMeans(nw_anatolian_post$specimen_prob[, , 2]), 2), p_male = round(colMeans(nw_anatolian_post$specimen_prob[, , 3]), 2))]
 
 ####Export the relevant files####
-write.csv(simulated_demographic_observations, file = "./Output/Table S1 - Simulated Demographic Observations.csv", row.names = F)
-write.csv(simulated_single_assemblage_results, file = "./Output/Table S2 - Single Assemblage Simulation Results (Measurement Assemblage).csv", row.names = F)
-write.csv(simulated_multisite_results, file = "./Output/Table S3 - Multisite Simulation Results (Measurement Assemblage).csv", row.names = F)
+write.csv(simulated_demographic_observations, file = "./Output/Tables/Table S1 - Simulated Demographic Observations.csv", row.names = F)
+write.csv(simulated_single_assemblage_results, file = "./Output/Tables/Table S2 - Single Assemblage Simulation Results (Measurement Assemblage).csv", row.names = F)
+write.csv(simulated_multisite_results, file = "./Output/Tables/Table S3 - Multisite Simulation Results (Measurement Assemblage).csv", row.names = F)
 #
-write.csv(pinarbasi_results, file = "./Output/Table S4 - Pinarbasi Sheep Results (Measurement Assemblage).csv", row.names = F)
-write.csv(nw_anatolian_results, file = "./Output/Table S5 - NW Anatolian Cattle Results (Measurement Assemblage).csv", row.names = F)
+write.csv(pinarbasi_results, file = "./Output/Tables/Table S4 - Pinarbasi Sheep Results (Measurement Assemblage).csv", row.names = F)
+write.csv(nw_anatolian_results, file = "./Output/Tables/Table S5 - NW Anatolian Cattle Results (Measurement Assemblage).csv", row.names = F)
 ```
 
 Figure 9A shows the posterior distributions assemblage-level $\pi$ mixture components. In general, the Pinarbaşı B sheep assemblage is overwhelmingly composed of immature animals (posterior $\mu_{\pi_1}$ median = `r pinarbasi_posterior_summary$pinarbasi_pi1_median`; 95% posterior confidence interval for $\mu_{\pi_1}$ = `r pinarbasi_posterior_summary$pinarbasi_pi1_95CI`), somewhat lower than the observed fusion rate of proximal and middle phalanges `r pinarbasi_posterior_summary$pinarbasi_age_observation`. The posterior distribution of the overall adult sex ratio ($\theta_{\operatorname{female}}$) suggests that females are more common than males (`r pinarbasi_posterior_summary$pinarbasi_femaletheta_over50` of the posterior samples are above 0.5), but this estimate is uncertain, owing to the low overall proportions of female and male animals.
@@ -2685,21 +2690,21 @@ One of the central tenets of the mixture model's extension to modeled assemblage
 
 The ability to create accurate simulated estimates of age and sex composition provides many opportunities for further analyses. For instance, comparison of the composition of animals in different depositional contexts could support contextual taphonomic analyses [e.g., @meier_2020]. Access to certain kinds of animals could highlight systems of provisioning or status-related restrictions [@arbuckle_2012; @twiss_2019: 73-97]. Differences in the age and sex composition of different body parts could also highlight ritual behaviors reflected in the use of certain contexts or sites [e.g., @madgwick_mulville_2015]. On a more practical level, providing specimen-specific probabilities of being immature, female, or male can provide a useful baseline for sampling strategies focused on ancient DNA or stable isotopes, allowing researchers to explore potential sex differences in diets [e.g., @post_etal_2001] or more easily identify male specimens to isolate Y-chromosomal DNA to explore sex-specific selection [e.g., @mcgrory_etal_2012; @daly_etal_2021].
 
-The archaeological case studies highlight the importance of considering the presence of immature specimens and elemental variation in body size when summarizing the biometry and composition of an assemblage, problems addressed by the Bayesian multilevel mixture model. Variation in the proportion of immature animals in the assemblage, as in the multisite case study for northwestern Anatolia, may also highlight differences in culling strategies or even the seasonality of animal presence at the sites. Most of the Pinarbaşı B material derives from immature specimens, which could complicate inter-assemblage biometric analyses that do not use sex-specific size estimates (e.g., Arbuckle et al., 2014). Restricting measurements only to fused specimens removes useful information, particularly when fusion rates may differ between male and female animals (Zeder & Hesse, 2000); further, it does not resolve the problem of immature animals in the measurement assemblage if early-fusing elements like the distal humerus are still included because of post-fusion growth (Popkin et al., 2012). The ability to create sex-specific biometric estimates is important to document large-scale spatial and temporal dynamics in animal body size (e.g., Arbuckle et al., 2016).
+The archaeological case studies highlight the importance of considering the presence of immature specimens and elemental variation in body size when summarizing the biometry and composition of an assemblage. Variation in the proportion of immature animals in the assemblage, as in the multisite case study for Northwest Anatolia, may point to differences in culling strategies or even the seasonality of animal presence at the sites. Most of the Pinarbaşı B material derives from immature specimens, which could complicate inter-assemblage biometric analyses that do not use sex-specific size estimates [e.g., @arbuckle_etal_2014; @helmer_etal_2005]. Restricting measurements only to fused specimens removes useful information, particularly when fusion rates may differ between male and female animals [@zeder_hesse_2000]; further, it does not resolve the problem of immature animals in the measurement assemblage if early-fusing elements like the distal humerus are still included because of post-fusion growth [@popkin_etal_2012]. The ability to create sex-specific biometric estimates is important to document large-scale spatial and temporal dynamics in animal body size [e.g., @arbuckle_etal_2016; @wolfhagen_etal_2021].
 
-Examining LSIe (or LSI10) values of Pinarbaşı B sheep without accounting for the impact of immature animals would mislead a researcher into believing that sheep were smaller, on average, than sheep from contemporaneous sites (e.g., late Çatalhöyük: Baird et al., 2011). Sex-specific size estimates, accounting for the presence of immature animals, show that the Pinarbaşı B sheep are similar in size to contemporaneous Çatalhöyük sheep (Wolfhagen, Twiss, Mulville, & Demirergi, 2021). This bolsters the interpretation that Pinarbaşı B and Çatalhöyük sheep are the same animal population, and thus that the site was occupied seasonally by Çatalhöyük herders. While the estimated average LSIe for female sheep (µ2) at Pinarbaşı B is relatively broad (95% credible interval: -0.13 – -0.06 LSIe) because of the small proportion of adult-sized females in the assemblage (95% credible interval of the proportion of adult-sized females π2: 2–14%), it can still be fruitfully compared to other assemblages (95% credible interval of µ2 for late Çatalhöyük sheep: -0.11 – -0.06 LSIe; Wolfhagen et al., 2021). 
+Examining $\operatorname{LSI}_e$ (or $\operatorname{LSI}_{10}$) values of Pinarbaşı B sheep without accounting for the impact of immature animals would mislead a researcher into believing that sheep were smaller, on average, than sheep from contemporaneous sites [e.g., late Çatalhöyük: @baird_etal_2011]. Sex-specific size estimates, accounting for the presence of immature animals, show that the Pinarbaşı B sheep are similar in size to contemporaneous Çatalhöyük sheep [@wolfhagen_etal_2021]. This bolsters the interpretation that Pinarbaşı B and Çatalhöyük sheep are the same animal population, and thus that the site was occupied seasonally by Çatalhöyük herders. While the estimated average $\operatorname{LSI}_e$ for female sheep ($\mu_2$) at Pinarbaşı B is relatively broad (95% credible interval: `r pinarbasi_posterior_summary$overall_female_size_range` $\operatorname{LSI}_e$) because of the small proportion of adult-sized females in the assemblage (95% credible interval of the proportion of adult-sized females $\pi_2$: `r pinarbasi_posterior_summary$overall_female_pct_range`), it can still be fruitfully compared to other assemblages [95% credible interval of $\mu_2$ for late Çatalhöyük sheep: -0.11 – -0.06 $\operatorname{LSI}_e$; @wolfhagen_etal_2021]. 
 
 The increased ability to specify the age and sex composition of faunal assemblages with Bayesian multilevel mixture models also highlights the limitations of our current language used to describe and interpret these compositions. Many discussions that examine changes in the composition of faunal assemblages to identify changes in exploitation patterns use terms like “prime-dominated age structure” [e.g., @stiner_1990], “dominance of females,” [e.g., @peters_etal_2005] or “young male slaughter/kill-off” [e.g., @zeder_hesse_2000; @arbuckle_atici_2013]. These terms are deceptive in their utility—they describe some empirical pattern but it is up to the individual researcher to define the cut-off between a “dominant” and “non-dominant” assemblage. In the case of the adult sex ratio for Barcın Höyük, `r nw_anatolian_posterior_summary$barcin_thetafemale_over60` of the posterior samples are above 60% (1.5 females:1 male), but only `r nw_anatolian_posterior_summary$barcin_thetafemale_over75` of the posterior samples are over 75% (3 females:1 male). Meanwhile, `r nw_anatolian_posterior_summary$ilipinar1_thetafemale_over80` of the posterior samples for the adult sex ratio for Neolithic Ilıpınar are over 80% (4 females:1 male). Are both assemblages “dominated by females”? More formalized language in our hypotheses—or, rather, the adoption of statistical modeling frameworks [@mcelreath_2020_rethinkingbook: 4-17]—is necessary to clarify what changes in assemblage-level estimates of biometry and composition mean for past human-animal interactions.
 
-## 6. CONCLUSIONS
+## 6. Conclusions
 
 This paper describes a new method for estimating the biometry and age/sex composition of faunal assemblages based on standard measurement data, Bayesian multilevel mixture modeling. The model produces accurate estimates of sex-specific biometry, which can provide a more useful framework for inter-assemblage analysis [e.g., @arbuckle_etal_2016; @helmer_etal_2005]. Such a framework could better explore broad spatial and chronological patterns in animal biometry while accounting for differences in assemblage composition across the assemblages, ensuring reliable comparisons of animal body size in relation to other variables. These analyses could investigate the processes behind size fluctuation in animals, particular in relation to changing human-animal interactions and adaptation to new lifeways and anthropogenic environments.
 
-Furthermore, the estimates of the age and sex composition of the assemblage can be used to simulate assemblages of specimens with known group assignment (immature, female, and male). These simulations are the baseline for comparing differences in the composition of sub-assemblages. Doing so allows researchers to directly test hypotheses about differences in the age and sex composition of animal bones from different parts of a site, different fusion groups, or other categories. The Bayesian structure of the model allows researchers the flexibility to create bespoke hypotheses that can be tested directly, rather than relying on null hypothesis testing for inference [@otarolacastillo_torquato_2018; @otarolacastillo_etal_2022]. Thus, the mixture modeling framework described here provides a foundation for biometric and compositional analyses that operate at multiple scales and present a new avenue for summarizing and comparing zooarchaeological assemblages.
+Furthermore, the estimates of the age and sex composition of the assemblage can be used to simulate assemblages of specimens with known group assignment (immature, female, and male). These simulations are the baseline for comparing differences in the composition of sub-assemblages. Doing so allows researchers to make testable statements about the composition of the assemblage and to directly test hypotheses about differences in the age and sex composition of animal bones from different parts of a site, different fusion groups, or other categories. The Bayesian structure of the model allows researchers the flexibility to create bespoke hypotheses that can be tested directly, rather than relying on null hypothesis testing for inference [@otarolacastillo_torquato_2018; @otarolacastillo_etal_2022]. Thus, the mixture modeling framework described here provides a foundation for biometric and compositional analyses that operate at multiple scales and present a new avenue for summarizing and comparing zooarchaeological assemblages.
 
-## ACKNOWLEDGEMENTS
+## Acknowledgements
 
-The initial modeling work was developed as part of my dissertation research, which as partially funded by a Wenner-Gren Foundation Dissertation Fieldwork Grant (Grant #9192). I am grateful to the comments and insights on earlier versions of this manuscript from Zenobie Garrett and Heather Lynch. Any errors are my own.
+The initial modeling work was developed as part of my dissertation research, which as partially funded by a Wenner-Gren Foundation Dissertation Fieldwork Grant (Grant #9192). I am grateful to the comments and insights on earlier versions of this manuscript from Chris W. Carleton, Zenobie Garrett, Heather Lynch, Max D. Price, and Katheryn Twiss. Any errors are my own.
 
 ## References
 
@@ -2713,12 +2718,13 @@ The initial modeling work was developed as part of my dissertation research, whi
 
 ```{r simulated single assemblage posterior table, include = FALSE, eval = TRUE}
 table_simulated_single_assemblage_model_parameters <- data.table(single_assemblage_samples$summary(c("grand_theta", "grand_mu_immature", "grand_mu_female", "grand_mu_male", "grand_sigma_immature", "grand_sigma_female", "grand_sigma_male")))[, .(`Posterior Mean` = round(mean, 2), `Posterior Median` = round(median, 2), `Posterior SD` = round(sd, 2), `$5\\%$ Quantile` = round(q5, 2), `$95\\%$ Quantile` = round(q95, 2), `$\\hat{R}$` = round(rhat, 2), `Effective Sample Size (Bulk)` = round(ess_bulk, 0), `Effective Sample Size (Tail)` = round(ess_tail, 0))]
-parameter_names <- c("$\\theta_1$", "$\\theta_2$", "$\\theta_3$", "$\\mu_1$", "$\\mu_2$", "$\\mu_3$", "$\\sigma_1$", "$\\sigma_2$", "$\\sigma_3$")
+parameter_names <- c("$\\pi_1$", "$\\pi_2$", "$\\pi_3$", "$\\mu_1$", "$\\mu_2$", "$\\mu_3$", "$\\sigma_1$", "$\\sigma_2$", "$\\sigma_3$")
 single_assemblage_overall_name <- "Single Assemblage Model"
 table_simulated_single_assemblage_model_parameters[, Parameter := c(sapply(parameter_names, function(x) paste(single_assemblage_overall_name, x, sep = " ")))]
 ```
 
 ```{r make simulated assemblage posterior table, echo = FALSE}
+#present table in latex
 kbl(table_simulated_single_assemblage_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior Median`, `Posterior SD`, `$5\\%$ Quantile`, `$95\\%$ Quantile`, `$\\hat{R}$`, `Effective Sample Size (Bulk)`, `Effective Sample Size (Tail)`)],
     col.names = c("Parameter", "Posterior Mean", "Posterior Median", "Posterior SD", "$5\\%$ Quantile", "$95\\%$ Quantile", "$\\hat{R}$", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)"),
     caption = "Posterior fit summaries for model parameters (single assemblage simulation)",
@@ -2726,6 +2732,13 @@ kbl(table_simulated_single_assemblage_model_parameters[, .(Parameter, `Posterior
   kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
   column_spec(1, border_right = T) %>%
   row_spec(0, align = "c")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_parameter_names <- c("pi_1", "pi_2", "pi_3", "mu_1", "mu_2", "mu_3", "sigma_1", "sigma_2", "sigma_3")
+csv_table_simulated_single_assemblage_model_parameters <- table_simulated_single_assemblage_model_parameters
+csv_table_simulated_single_assemblage_model_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(single_assemblage_overall_name, x, sep = " ")))]
+names(csv_table_simulated_single_assemblage_model_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_simulated_single_assemblage_model_parameters, file = "./Output/Tables/Table S6 - Single Assemblage Simulation Model Summary.csv", row.names = F)
 ```
 
 ```{r simulated multisite posterior table, include = FALSE, eval = TRUE}
@@ -2746,6 +2759,12 @@ kbl(table_simulated_multisite_model_parameters[, .(Parameter, `Posterior Mean`, 
   kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
   column_spec(1, border_right = T) %>%
   row_spec(0, align = "c")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_table_simulated_multisite_model_parameters <- table_simulated_multisite_model_parameters
+csv_table_simulated_multisite_model_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(multisite_overall_name, x, sep = " ")))]
+names(csv_table_simulated_multisite_model_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_simulated_multisite_model_parameters, file = "./Output/Tables/Table S7 - Multisite Simulation Model Summary.csv", row.names = F)
 ```
 
 ```{r make simulated multisite site-level table, echo = FALSE}
@@ -2758,6 +2777,12 @@ kbl(table_simulated_multisite_site_parameters[, .(Parameter, `Posterior Mean`, `
   column_spec(2:6, width = "4em") %>%
   column_spec(7, width = "2em") %>%
   column_spec(8:9, width = "4em")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_table_simulated_multisite_site_parameters <- table_simulated_multisite_site_parameters
+csv_table_simulated_multisite_site_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(simulated_multisite_site_names, x, sep = " ")))]
+names(csv_table_simulated_multisite_site_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_simulated_multisite_site_parameters, file = "./Output/Tables/Table S8 - Multisite Simulation Site Summary.csv", row.names = F)
 ```
 
 \newpage
@@ -2780,6 +2805,13 @@ kbl(table_pinarbasi_model_parameters[, .(Parameter, `Posterior Mean`, `Posterior
   kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
   column_spec(1, border_right = T) %>%
   row_spec(0, align = "c")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_pinarbasi_overall_name <- "Pinarbasi B Sheep" #removes diacritics that don't translate into CSV easily
+csv_table_pinarbasi_model_parameters <- table_pinarbasi_model_parameters
+csv_table_pinarbasi_model_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(csv_pinarbasi_overall_name, x, sep = " ")))]
+names(csv_table_pinarbasi_model_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_pinarbasi_model_parameters, file = "./Output/Tables/Table S9 - Pinarbasi B Sheep Model Summary.csv", row.names = F)
 ```
 
 ```{r Northwest Anatolian cattle posterior table, include = FALSE, eval = TRUE}
@@ -2801,6 +2833,12 @@ kbl(table_nw_anatolian_model_parameters[, .(Parameter, `Posterior Mean`, `Poster
   kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
   column_spec(1, border_right = T) %>%
   row_spec(0, align = "c")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_table_nw_anatolian_model_parameters <- table_nw_anatolian_model_parameters
+csv_table_nw_anatolian_model_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(nw_anatolian_overall_name, x, sep = " ")))]
+names(csv_table_nw_anatolian_model_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_nw_anatolian_model_parameters, file = "./Output/Tables/Table S10 - Northwest Anatolian Cattle Model Summary.csv", row.names = F)
 ```
 
 ```{r make Northwest Anatolian site-level table, echo = FALSE}
@@ -2811,6 +2849,13 @@ kbl(table_nw_anatolian_site_parameters[, .(Parameter, `Posterior Mean`, `Posteri
   kable_styling(latex_options = c("HOLD_position", "scale_down")) %>%
   column_spec(1, border_right = T) %>%
   row_spec(0, align = "c")
+
+#export table in csv (renaming variables to remove LaTeX formatting)
+csv_nw_anatolian_site_names <- c("Barcin", "Neolithic Ilipinar", "Mentese", "Chalcolithic Ilipinar") #removes diacritics that don't translate into CSV well
+csv_table_nw_anatolian_site_parameters <- table_nw_anatolian_site_parameters
+csv_table_nw_anatolian_site_parameters[, Parameter := c(sapply(csv_parameter_names, function(x) paste(csv_nw_anatolian_site_names, x, sep = " ")))]
+names(csv_table_nw_anatolian_site_parameters) <- c("Posterior Mean", "Posterior Median", "Posterior SD", "5% Quantile", "95% Quantile", "rhat", "Effective Sample Size (Bulk)", "Effective Sample Size (Tail)", "Parameter")
+write.csv(csv_table_nw_anatolian_site_parameters, file = "./Output/Tables/Table S11 - Northwest Anatolian Cattle Site Summary.csv", row.names = F)
 ```
 
 \newpage
