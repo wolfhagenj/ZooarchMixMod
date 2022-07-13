@@ -789,7 +789,7 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   chains = 4,
   parallel_chains = 4,
   refresh = 250,
-  adapt_delta = 0.90,
+  adapt_delta = 0.95,
 #  seed = 1527876519,
   max_treedepth = 15
 )

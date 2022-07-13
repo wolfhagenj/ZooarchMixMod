@@ -1,0 +1,6 @@
+"Term","Definition"
+"Element Portion","A complete or partial skeletal element defined by the zooarchaeologist, used as the foundation of the multilevel model (e.g., ""distal humerus""). Model produces parameter estimates for all defined element portions, so element portions must be non-overlapping. Analogous to ""skeletal part type"" in Breslawski (2022)."
+"Measurement Set","Specific type of observed measurement (e.g., ""humerus distal breadth"")."
+"Measured Assemblage","Assemblage of measured specimens from a defined number of element portions of a specific taxon."
+"Modeled Assemblage","Assemblage of specimens from a defined number of element portions of a specific taxon. Includes measured and non-measured specimens, though all element portions must have some number of measured specimens. Measurability is assumed to be effectively random (i.e., unrelated to whether the specimen came from an immature, female, or male individual)."
+"Full Assemblage","Assemblage of specimens from a defined number of element portions of a specific taxon. Includes element portions that do not have any observed measurements. Measurability is assumed to be effectively random (i.e., unrelated to whether a specimen came from an immature, female, or male individual)."
