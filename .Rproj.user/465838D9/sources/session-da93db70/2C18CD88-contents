@@ -89,17 +89,17 @@ data {
   int<lower = 1> N_Specimens; //number of specimens
   int<lower = 1> N_Measurements; //number of total measurements
   int<lower = 1> N_Element_Portions; //number of elements
-  int<lower = 1> N_Dimensions; //number of measurement types
-  real<lower = 0, upper = 1> Immature_Proportion[N_Element_Portions]; //proportion of potentially immature specimens
+  int<lower = 1> N_Measurement_Sets; //number of measurement types
+  real<lower = 0, upper = 1> Immature_Proportion[N_Element_Portions]; //proportion of potentially young specimens
   //Specimen observations
   int<lower = 1, upper = N_Element_Portions> Element_Portion[N_Specimens]; //what element is the specimen?
-	int<lower = 0, upper = 1> Immature[N_Specimens]; //whether the specimen could be considered immature
+	int<lower = 0, upper = 1> Immature[N_Specimens]; //whether the specimen could be considered young
 	//Measurement observations
 	real<lower = 0> Measurement_obs[N_Measurements]; //observed measurements
 	real<lower = 0> Measurement_sd[N_Measurements]; //uncertainty around that measurement
-	real<lower = 0> Reference_obs[N_Dimensions]; //reference specimen measurements
-	real<lower = 0> Reference_sd[N_Dimensions]; //uncertainty around the measurement
-  int<lower = 1, upper = N_Dimensions> Dimension[N_Measurements]; //which measurement type is this?
+	real<lower = 0> Reference_obs[N_Measurement_Sets]; //reference specimen measurements
+	real<lower = 0> Reference_sd[N_Measurement_Sets]; //uncertainty around the measurement
+  int<lower = 1, upper = N_Measurement_Sets> Measurement_Set[N_Measurements]; //which measurement type is this?
 	int<lower = 1, upper = N_Specimens> Specimen[N_Measurements]; // which specimen is this measurement coming from?
   //Demographic observations
 	int<lower = 0> Immature_obs;
@@ -131,7 +131,7 @@ Humerus_Bd at all sites)
 parameters {
   //observations (incorporating measurement error)
   vector<lower = 0>[N_Measurements] Measurement;
-  vector<lower = 0>[N_Dimensions] Reference;
+  vector<lower = 0>[N_Measurement_Sets] Reference;
   vector[N_Specimens] LSI;
   //global hyper-parameters of the mixture model
   vector[2] grand_theta_raw; //will be constrained to theta
@@ -229,8 +229,9 @@ model {
 	grand_logsigma_female ~ normal(prior_logsigma_female[1], prior_logsigma_female[2]);
 	grand_logsigma_male ~ normal(prior_logsigma_male[1], prior_logsigma_male[2]);
 	//variability between analytical units
-	element_sigma[1:2] ~ normal(0, 0.5); //less reason to think that mixture proportions are the same across elements
-	element_sigma[3:8] ~ normal(0, 0.05);
+	element_sigma[1:2] ~ normal(0, 1); //less reason to think that mixture proportions are the same across elements
+	element_sigma[3] ~ normal(0, 0.5);
+	element_sigma[4:8] ~ normal(0, 0.5); //0.25 shouldn't be as much variation between elements for these parameters, though
 	to_vector(z_element) ~ normal(0, 1);
 	L_Rho_element ~ lkj_corr_cholesky(2);
 	
@@ -238,7 +239,7 @@ model {
   Measurement_obs ~ normal(Measurement, Measurement_sd);
   Reference_obs ~ normal(Reference, Reference_sd);
   for(i in 1:N_Measurements) {
-    LSI_measurement = log(Measurement[i] / Reference[Dimension[i]]);
+    LSI_measurement = log(Measurement[i] / Reference[Measurement_Set[i]]);
     LSI_measurement ~ normal(LSI[Specimen[i]], 0.02); //based on intra-element variation from Popkin, et al. (2012)
   }
   //observation of age and sex parameters
