@@ -1,68 +1,68 @@
-"ID","Site","Anatomy","Element","Proximal Fusion","Distal Fusion","Immature","Measure","Measurement_value","Measurement","Reference_value","Measurement_Set","Element_Portion","Specimen_No","Site_No"
-"Barcin Bone 541","Barcin","radius bone","Rad_prox","","",1,"Bp",64,"Rad_Bp",100,11,10,57,2
-"Barcin Bone 542","Barcin","radius bone","Rad_dist","","Distal epiphysis unfused",1,"Bd",60.6,"Rad_Bd",92,9,9,58,2
-"Barcin Bone 988","Barcin","radius bone","Rad_prox","Proximal epiphysis fused","Distal epiphysis unfused",1,"BFp",80.7,"Rad_BFp",90,10,10,67,2
-"Barcin Bone 1351","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","Distal epiphysis fused",0,"Bp",74.5,"Mtc_Bp",74,4,4,4,2
-"Barcin Bone 1665","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","",1,"Bp",51.5,"Mtc_Bp",74,4,4,10,2
-"Barcin Bone 2919","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","",1,"Bp",60.6,"Mtc_Bp",74,4,4,29,2
-"Barcin Bone 673","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_dist","","Distal epiphysis unfused",1,"Bd",48.2,"Mtc_Bd",73,3,3,64,2
-"Barcin Bone 1299","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_dist","","Distal epiphysis fused",0,"Bd",61.5,"Mtc_Bd",73,3,3,3,2
-"Barcin Bone 245","Barcin","tibia","Tib_dist","","Distal epiphysis unfused",1,"Bd",48,"Tib_Bd",78,12,11,23,2
-"Barcin Bone 668","Barcin","tibia","Tib_dist","","Distal epiphysis fused",0,"Bd",62.3,"Tib_Bd",78,12,11,61,2
-"Barcin Bone 1367","Barcin","tibia","Tib_dist","","Distal epiphysis unfused",1,"Bd",59,"Tib_Bd",78,12,11,6,2
-"Barcin Bone 1975","Barcin","tibia","Tib_dist","","Distal epiphysis fused",0,"Bd",70,"Tib_Bd",78,12,11,15,2
-"Barcin Bone 166","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","Distal epiphysis unfused",1,"Bp",42,"Mtt_Bp",62,6,6,9,2
-"Barcin Bone 1796","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",52.5,"Mtt_Bp",62,6,6,14,2
-"Barcin Bone 2775","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",48.5,"Mtt_Bp",62,6,6,25,2
-"Barcin Bone 3563","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",48.4,"Mtt_Bp",62,6,6,45,2
-"Barcin Bone 1782","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",56,"Mtt_Bd",68,5,5,12,2
-"Barcin Bone 2432","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis unfused",1,"Bd",47.9,"Mtt_Bd",68,5,5,20,2
-"Barcin Bone 2659","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fusing",0,"Bd",64.4,"Mtt_Bd",68,5,5,24,2
-"Barcin Bone 3406","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",58.7,"Mtt_Bd",68,5,5,38,2
-"Barcin Bone 3564","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",62.5,"Mtt_Bd",68,5,5,46,2
-"Barcin Bone 284","Barcin","talus","Ast","","",1,"Bd",46,"Ast_Bd",52,1,1,27,2
-"Barcin Bone 309","Barcin","talus","Ast","","",1,"Bd",49.5,"Ast_Bd",52,1,1,32,2
-"Barcin Bone 2181","Barcin","talus","Ast","","",1,"Bd",45.8,"Ast_Bd",52,1,1,17,2
-"Barcin Bone 2442","Barcin","talus","Ast","","",1,"Bd",40.3,"Ast_Bd",52,1,1,22,2
-"Barcin Bone 2934","Barcin","talus","Ast","","",1,"Bd",51.8,"Ast_Bd",52,1,1,30,2
-"Barcin Bone 106","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",22.7,"PH1_Bp",39,7,7,2,2
-"Barcin Bone 431","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",40.3,"PH1_Bp",39,7,7,53,2
-"Barcin Bone 449","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",26.5,"PH1_Bp",39,7,7,56,2
-"Barcin Bone 558","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",24.6,"PH1_Bp",39,7,7,59,2
-"Barcin Bone 559","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",22.4,"PH1_Bp",39,7,7,60,2
-"Barcin Bone 717","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",33.3,"PH1_Bp",39,7,7,65,2
-"Barcin Bone 1670","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",31,"PH1_Bp",39,7,7,11,2
-"Barcin Bone 2182","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",31.4,"PH1_Bp",39,7,7,18,2
-"Barcin Bone 2344","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",39,"PH1_Bp",39,7,7,19,2
-"Barcin Bone 2776","Barcin","proximal phalanx","PH1","","",1,"Bp",31,"PH1_Bp",39,7,7,26,2
-"Barcin Bone 3241","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",29.6,"PH1_Bp",39,7,7,37,2
-"Barcin Bone 3413","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",29.5,"PH1_Bp",39,7,7,39,2
-"Barcin Bone 3414","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",23.3,"PH1_Bp",39,7,7,40,2
-"Barcin Bone 3445","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",28.2,"PH1_Bp",39,7,7,42,2
-"Barcin Bone 3603","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",24.5,"PH1_Bp",39,7,7,48,2
-"Barcin Bone 3627","Barcin","proximal phalanx","PH1","","",1,"Bp",23.7,"PH1_Bp",39,7,7,49,2
-"Barcin Bone 35","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.7,"PH2_Bp",36,8,8,44,2
-"Barcin Bone 90","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",25,"PH2_Bp",36,8,8,66,2
-"Barcin Bone 217","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31,"PH2_Bp",36,8,8,16,2
-"Barcin Bone 310","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.3,"PH2_Bp",36,8,8,33,2
-"Barcin Bone 311","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",26.9,"PH2_Bp",36,8,8,35,2
-"Barcin Bone 432","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.1,"PH2_Bp",36,8,8,54,2
-"Barcin Bone 433","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.5,"PH2_Bp",36,8,8,55,2
-"Barcin Bone 671","Barcin","middle phalanx","PH2","","",1,"Bp",23.9,"PH2_Bp",36,8,8,62,2
-"Barcin Bone 672","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.5,"PH2_Bp",36,8,8,63,2
-"Barcin Bone 1010","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.1,"PH2_Bp",36,8,8,1,2
-"Barcin Bone 1366","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",27,"PH2_Bp",36,8,8,5,2
-"Barcin Bone 1533","Barcin","middle phalanx","PH2","","",1,"Bp",31.6,"PH2_Bp",36,8,8,7,2
-"Barcin Bone 1536","Barcin","middle phalanx","PH2","","",1,"Bp",36.6,"PH2_Bp",36,8,8,8,2
-"Barcin Bone 2438","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",32.5,"PH2_Bp",36,8,8,21,2
-"Barcin Bone 2863","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",20.6,"PH2_Bp",36,8,8,28,2
-"Barcin Bone 2953","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",34.8,"PH2_Bp",36,8,8,31,2
-"Barcin Bone 3107","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",24.9,"PH2_Bp",36,8,8,34,2
-"Barcin Bone 3237","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",24,"PH2_Bp",36,8,8,36,2
-"Barcin Bone 3499","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31,"PH2_Bp",36,8,8,43,2
-"Barcin Bone 3629","Barcin","middle phalanx","PH2","","",1,"Bp",22.2,"PH2_Bp",36,8,8,50,2
-"Barcin Bone 3651","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",37.2,"PH2_Bp",36,8,8,52,2
-"Barcin Bone 1783","Barcin","calcaneus","Cal","Proximal epiphysis unfused","",1,"GB",51,"Cal_GB",46,2,2,13,2
-"Barcin Bone 3442","Barcin","calcaneus","Cal","Proximal epiphysis unfused","",1,"GB",47,"Cal_GB",46,2,2,41,2
-"Barcin Bone 3567","Barcin","calcaneus","Cal","","",1,"GB",38.3,"Cal_GB",46,2,2,47,2
-"Barcin Bone 3646","Barcin","calcaneus","Cal","Proximal epiphysis fused","",0,"GB",47.9,"Cal_GB",46,2,2,51,2
+"ID","Site","Anatomy","Element","Proximal Fusion","Distal Fusion","Immature","Measure","Measurement_value","Measurement","Reference_value","Dimension","Element_Portion","Specimen_No"
+"Barcin Bone 541","Barcin","radius bone","Rad_prox","","",1,"Bp",64,"Rad_Bp",100,11,10,57
+"Barcin Bone 542","Barcin","radius bone","Rad_dist","","Distal epiphysis unfused",1,"Bd",60.6,"Rad_Bd",92,9,9,58
+"Barcin Bone 988","Barcin","radius bone","Rad_prox","Proximal epiphysis fused","Distal epiphysis unfused",1,"BFp",80.7,"Rad_BFp",90,10,10,67
+"Barcin Bone 1351","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","Distal epiphysis fused",0,"Bp",74.5,"Mtc_Bp",74,4,4,4
+"Barcin Bone 1665","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","",1,"Bp",51.5,"Mtc_Bp",74,4,4,10
+"Barcin Bone 2919","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_prox","","",1,"Bp",60.6,"Mtc_Bp",74,4,4,29
+"Barcin Bone 673","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_dist","","Distal epiphysis unfused",1,"Bd",48.2,"Mtc_Bd",73,3,3,64
+"Barcin Bone 1299","Barcin","fused metacarpal bones 3 and 4; metacarpal bone of digit 3; metacarpal bone of digit 4; metacarpal bone of digit 5","Mtc_dist","","Distal epiphysis fused",0,"Bd",61.5,"Mtc_Bd",73,3,3,3
+"Barcin Bone 245","Barcin","tibia","Tib_dist","","Distal epiphysis unfused",1,"Bd",48,"Tib_Bd",78,12,11,23
+"Barcin Bone 668","Barcin","tibia","Tib_dist","","Distal epiphysis fused",0,"Bd",62.3,"Tib_Bd",78,12,11,61
+"Barcin Bone 1367","Barcin","tibia","Tib_dist","","Distal epiphysis unfused",1,"Bd",59,"Tib_Bd",78,12,11,6
+"Barcin Bone 1975","Barcin","tibia","Tib_dist","","Distal epiphysis fused",0,"Bd",70,"Tib_Bd",78,12,11,15
+"Barcin Bone 166","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","Distal epiphysis unfused",1,"Bp",42,"Mtt_Bp",62,6,6,9
+"Barcin Bone 1796","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",52.5,"Mtt_Bp",62,6,6,14
+"Barcin Bone 2775","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",48.5,"Mtt_Bp",62,6,6,25
+"Barcin Bone 3563","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_prox","","",1,"Bp",48.4,"Mtt_Bp",62,6,6,45
+"Barcin Bone 1782","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",56,"Mtt_Bd",68,5,5,12
+"Barcin Bone 2432","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis unfused",1,"Bd",47.9,"Mtt_Bd",68,5,5,20
+"Barcin Bone 2659","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fusing",0,"Bd",64.4,"Mtt_Bd",68,5,5,24
+"Barcin Bone 3406","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",58.7,"Mtt_Bd",68,5,5,38
+"Barcin Bone 3564","Barcin","metatarsal bone of digit 5; metatarsal bone of digit 2; fused metatarsal bones 3 and 4","Mtt_dist","","Distal epiphysis fused",0,"Bd",62.5,"Mtt_Bd",68,5,5,46
+"Barcin Bone 284","Barcin","talus","Ast","","",1,"Bd",46,"Ast_Bd",52,1,1,27
+"Barcin Bone 309","Barcin","talus","Ast","","",1,"Bd",49.5,"Ast_Bd",52,1,1,32
+"Barcin Bone 2181","Barcin","talus","Ast","","",1,"Bd",45.8,"Ast_Bd",52,1,1,17
+"Barcin Bone 2442","Barcin","talus","Ast","","",1,"Bd",40.3,"Ast_Bd",52,1,1,22
+"Barcin Bone 2934","Barcin","talus","Ast","","",1,"Bd",51.8,"Ast_Bd",52,1,1,30
+"Barcin Bone 106","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",22.7,"PH1_Bp",39,7,7,2
+"Barcin Bone 431","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",40.3,"PH1_Bp",39,7,7,53
+"Barcin Bone 449","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",26.5,"PH1_Bp",39,7,7,56
+"Barcin Bone 558","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",24.6,"PH1_Bp",39,7,7,59
+"Barcin Bone 559","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",22.4,"PH1_Bp",39,7,7,60
+"Barcin Bone 717","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",33.3,"PH1_Bp",39,7,7,65
+"Barcin Bone 1670","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",31,"PH1_Bp",39,7,7,11
+"Barcin Bone 2182","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",31.4,"PH1_Bp",39,7,7,18
+"Barcin Bone 2344","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",39,"PH1_Bp",39,7,7,19
+"Barcin Bone 2776","Barcin","proximal phalanx","PH1","","",1,"Bp",31,"PH1_Bp",39,7,7,26
+"Barcin Bone 3241","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",29.6,"PH1_Bp",39,7,7,37
+"Barcin Bone 3413","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",29.5,"PH1_Bp",39,7,7,39
+"Barcin Bone 3414","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",23.3,"PH1_Bp",39,7,7,40
+"Barcin Bone 3445","Barcin","proximal phalanx","PH1","Proximal epiphysis fused","",0,"Bp",28.2,"PH1_Bp",39,7,7,42
+"Barcin Bone 3603","Barcin","proximal phalanx","PH1","Proximal epiphysis unfused","",1,"Bp",24.5,"PH1_Bp",39,7,7,48
+"Barcin Bone 3627","Barcin","proximal phalanx","PH1","","",1,"Bp",23.7,"PH1_Bp",39,7,7,49
+"Barcin Bone 35","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.7,"PH2_Bp",36,8,8,44
+"Barcin Bone 90","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",25,"PH2_Bp",36,8,8,66
+"Barcin Bone 217","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31,"PH2_Bp",36,8,8,16
+"Barcin Bone 310","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.3,"PH2_Bp",36,8,8,33
+"Barcin Bone 311","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",26.9,"PH2_Bp",36,8,8,35
+"Barcin Bone 432","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.1,"PH2_Bp",36,8,8,54
+"Barcin Bone 433","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.5,"PH2_Bp",36,8,8,55
+"Barcin Bone 671","Barcin","middle phalanx","PH2","","",1,"Bp",23.9,"PH2_Bp",36,8,8,62
+"Barcin Bone 672","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31.5,"PH2_Bp",36,8,8,63
+"Barcin Bone 1010","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",30.1,"PH2_Bp",36,8,8,1
+"Barcin Bone 1366","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",27,"PH2_Bp",36,8,8,5
+"Barcin Bone 1533","Barcin","middle phalanx","PH2","","",1,"Bp",31.6,"PH2_Bp",36,8,8,7
+"Barcin Bone 1536","Barcin","middle phalanx","PH2","","",1,"Bp",36.6,"PH2_Bp",36,8,8,8
+"Barcin Bone 2438","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",32.5,"PH2_Bp",36,8,8,21
+"Barcin Bone 2863","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",20.6,"PH2_Bp",36,8,8,28
+"Barcin Bone 2953","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",34.8,"PH2_Bp",36,8,8,31
+"Barcin Bone 3107","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",24.9,"PH2_Bp",36,8,8,34
+"Barcin Bone 3237","Barcin","middle phalanx","PH2","Proximal epiphysis unfused","",1,"Bp",24,"PH2_Bp",36,8,8,36
+"Barcin Bone 3499","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",31,"PH2_Bp",36,8,8,43
+"Barcin Bone 3629","Barcin","middle phalanx","PH2","","",1,"Bp",22.2,"PH2_Bp",36,8,8,50
+"Barcin Bone 3651","Barcin","middle phalanx","PH2","Proximal epiphysis fused","",0,"Bp",37.2,"PH2_Bp",36,8,8,52
+"Barcin Bone 1783","Barcin","calcaneus","Cal","Proximal epiphysis unfused","",1,"GB",51,"Cal_GB",46,2,2,13
+"Barcin Bone 3442","Barcin","calcaneus","Cal","Proximal epiphysis unfused","",1,"GB",47,"Cal_GB",46,2,2,41
+"Barcin Bone 3567","Barcin","calcaneus","Cal","","",1,"GB",38.3,"Cal_GB",46,2,2,47
+"Barcin Bone 3646","Barcin","calcaneus","Cal","Proximal epiphysis fused","",0,"GB",47.9,"Cal_GB",46,2,2,51
