@@ -7,7 +7,7 @@ In addition, this repository maintains code necessary to apply the method to oth
 
 To apply the method to your own zooarchaeological data, you first need to set up your data in the following format. I have typically used the {data.table} package to prepare my data, which is what the "data_cleaning.R" script uses. I also use the {zoolog} package (with some additions) to get standard measurements for calculating LSI values. However, the following steps can also be done using a different package or even outside of R, as long as the following requirements are met:
 
-|Arch_ID|Site_No|Specimen_No|Element|Element_Portion|Measurement|Measurement_Set|Immature|Value_obs|Value_sd|Reference_obs|Reference_sd|
+|Arch_ID|Site_No|Specimen_No|Element|Element_Portion|Measurement|Dimension|Immature|Value_obs|Value_sd|Reference_obs|Reference_sd|
 |---|---|---|---|---|---|---|---|---|---|---|---|
 |SITE_059|1|1|Scapula|1|Sca_GLP|1|1|34.5|0.345|33.0|0.330|
 |SITE_003|1|2|Scapula|1|Sca_GLP|1|1|30.0|0.300|33.0|0.330|
@@ -22,7 +22,7 @@ This is a dummy example using some fake data of sheep measurement data.
 - "Element" is a clarifying label and thus not necessarily required; it is the label of the element portion and is helpful to interpret results
 - "Element_Portion" is required; the model uses this numeric code to group observations into different categories for the multilevel model
   - It is important to ensure that all specimens have a single "Element_Portion" (even if, as in the example, both the proximal and distal parts of the element have observed measurements).
-- "Measurement" and "Measurement_Set" have the same general structure as "Element" and "Element_Portion", though every type of measurement should have its own associated "Measurement_Set" (see the values for the two measurements in "Specimen_No" 4). Note that "Measurement" is a clarifying label and is thus not strictly required.
+- "Measurement" and "Dimension" have the same general structure as "Element" and "Element_Portion", though every type of measurement should have its own associated "Dimension" (see the values for the two measurements in "Specimen_No" 4). Note that "Measurement" is a clarifying label and is thus not strictly required.
 - "Immature" is required; this is a binary (0/1) variable about whether the specimen can be *potentially* immature based on its fusion status or biology.
   - Note that this is a specimen-level variable; all observations of the same specimen must have the same value
 - "Value_obs" is the actual observed measurement value
@@ -30,7 +30,7 @@ This is a dummy example using some fake data of sheep measurement data.
 - "Reference_obs" is the relevant observed measurement from the standard animal (used to calculate LSI values)
   - "Reference_sd" is the meausrement error of that observation, following the same guidelines
 
-These variables represent the minimal set of variables necessary to apply a Bayesian multilevel mixture model to a dataset (minus the three variables noted as clarifying labels). Note that the application code, as written, expects these particular variable names. Again, the "data_cleaning.R" script can help create the numeric codes (Specimen_No, Element_Portion, Measurement_Set) that the Stan model expects. These are done automatically by translating the clarifying labels into factors, which means the numeric codes follow alphabetical order. However, you can set up your own order if you want the numeric codes to be in a different order (e.g., one that mirrors anatomical position).
+These variables represent the minimal set of variables necessary to apply a Bayesian multilevel mixture model to a dataset (minus the three variables noted as clarifying labels). Note that the application code, as written, expects these particular variable names. Again, the "data_cleaning.R" script can help create the numeric codes (Specimen_No, Element_Portion, Dimension) that the Stan model expects. These are done automatically by translating the clarifying labels into factors, which means the numeric codes follow alphabetical order. However, you can set up your own order if you want the numeric codes to be in a different order (e.g., one that mirrors anatomical position).
 
 ### Running the model (single assemblage)
 
