@@ -143,6 +143,11 @@ measured_assemblage_simulated_composition <- rbindlist(parLapply(cl = cl, 1:4000
 modeled_assemblage_simulated_composition <- rbindlist(parLapply(cl = cl, 1:4000, fun = function(x) ifm_composition(modeled_assemblage[, theta_finder(Specimen_No, Element_Portion, Immature, modeled_immature_proportions, element_thetas = single_assemblage_post$theta[x, , ], specimen_probs = single_assemblage_post$specimen_prob[x, , ]), .(ID, Specimen_No, Element, Element_Portion, Immature)][, .(ID, Specimen_No, Site_No = 1, Element, Element_Portion, Immature, p_immature, p_female, p_male)])[, .(Iteration = x, Site_No, Element_Portion, Element, Simulated_Group, N)]))
 full_assemblage_simulated_composition <- rbindlist(parLapply(cl = cl, 1:4000, fun = function(x) ifm_composition(full_assemblage[, theta_finder(Specimen_No, Element_Portion, Immature, full_immature_proportions, element_thetas = cbind(single_assemblage_post$theta[x, , ], t(site_unmodeled_element_portion_theta[Iteration %in% x, .(theta_1, theta_2, theta_3)])), specimen_probs = single_assemblage_post$specimen_prob[x, , ]), .(ID, Specimen_No, Element, Element_Portion, Immature)][, .(ID, Specimen_No, Site_No = 1, Element, Element_Portion, Immature, p_immature, p_female, p_male)])[, .(Iteration = x, Site_No, Element_Portion, Element, Simulated_Group, N)]))
 
+#Optional: have a chime notification when this is done
+#Uncomment Line 149 (will need to install the {beep} package first), plays a chime when the line is run
+#If you select multiple lines (e.g., Lines 142-149) as a single run, the chime will play when analyses are finished
+#beepr::beep()
+
 ####Run the composition analyses####
 #This saves each plot as an object, which can then be called to display the plot
 #or combined together using the ggarrange() function
