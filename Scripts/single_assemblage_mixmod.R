@@ -41,7 +41,7 @@ single_assemblage_mixmod_standata <- list(
   N_Specimens = single_assemblage_mixmod_data[, .N, Specimen_No][, .N],
   N_Measurements = single_assemblage_mixmod_data[, .N],
   N_Element_Portions = single_assemblage_mixmod_data[, .N, Element_Portion][, .N],
-  N_Measurement_Sets = single_assemblage_mixmod_data[, .N, Measurement_Set][, .N],
+  N_Dimensions = single_assemblage_mixmod_data[, .N, Dimension][, .N],
   #Specimen observations
   Element_Portion = single_assemblage_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Element_Portion],
   Immature = single_assemblage_mixmod_data[, .N, .(Specimen_No, Element_Portion, Immature)][order(Specimen_No), Immature],
@@ -49,9 +49,9 @@ single_assemblage_mixmod_standata <- list(
   #Measurement observations
   Measurement_obs = single_assemblage_mixmod_data[, Measurement_value],
   Measurement_sd = single_assemblage_mixmod_data[, Measurement_value * 0.01], #Calculate measurement error for observed measurements and reference data (1% based on data from Breslawksi and Byers 2015)
-  Reference_obs = single_assemblage_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
-  Reference_sd = single_assemblage_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
-  Measurement_Set = single_assemblage_mixmod_data[, Measurement_Set],
+  Reference_obs = single_assemblage_mixmod_data[, .N, .(Dimension, Reference_value)][order(Dimension), Reference_value],
+  Reference_sd = single_assemblage_mixmod_data[, .N, .(Dimension, Reference_value)][order(Dimension), Reference_value * 0.01],
+  Dimension = single_assemblage_mixmod_data[, Dimension],
   Specimen = single_assemblage_mixmod_data[, Specimen_No],
   #Demographic observations
   Immature_obs = single_assemblage_demographic_observations[, N_Unfused],

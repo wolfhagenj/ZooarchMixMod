@@ -35,13 +35,13 @@ site1_demographic_observations <- fread("./Data/Site Demographic Observations.cs
 site2_mixmod_data <- fread("./Data/Site Mixture Model Data.csv")
 site2_demographic_observations <- fread("./Data/Site Demographic Observations.csv")
 
-#Combine the datasets and redefine codes (Specimen_No, Element_Portion, Measurement_Set)
+#Combine the datasets and redefine codes (Specimen_No, Element_Portion, Dimension)
 multisite_mixmod_data <- rbind(
   data.table(Site_No = 1, site1_mixmod_data),
   data.table(Site_No = 2, site2_mixmod_data)
 )
 #Re-assign numeric codes for element portions, measurement sets, and individual specimens (to prevent mismatches/overlap)
-multisite_mixmod_data[, Measurement_Set := as.numeric(as.factor(Measurement))]
+multisite_mixmod_data[, Dimension := as.numeric(as.factor(Measurement))]
 multisite_mixmod_data[, Element_Portion := as.numeric(as.factor(Element))]
 multisite_mixmod_data[, Specimen_No := as.numeric(as.factor(ID))] #this line needs to be different for the made-up example
 #Because I'm using two copies of the same site (again, don't do this!), need to include Site_No
@@ -63,7 +63,7 @@ multisite_mixmod_standata <- list(
   N_Specimens = multisite_mixmod_data[, .N, Specimen_No][, .N],
   N_Measurements = multisite_mixmod_data[, .N],
   N_Element_Portions = multisite_mixmod_data[, .N, Element_Portion][, .N],
-  N_Measurement_Sets = multisite_mixmod_data[, .N, Measurement_Set][, .N],
+  N_Dimensions = multisite_mixmod_data[, .N, Dimension][, .N],
   #Specimen observations
   Site = multisite_mixmod_data[, .N, .(Specimen_No, Element_Portion, Site_No, Immature)][order(Specimen_No), Site_No],
   Element_Portion = multisite_mixmod_data[, .N, .(Specimen_No, Element_Portion, Site_No, Immature)][order(Specimen_No), Element_Portion],
@@ -72,9 +72,9 @@ multisite_mixmod_standata <- list(
   #Measurement observations
   Measurement_obs = multisite_mixmod_data[, Measurement_value],
   Measurement_sd = multisite_mixmod_data[, Measurement_value * 0.01], #Calculate measurement error for observed measurements and reference data (1% based on data from Breslawksi and Byers 2015)
-  Reference_obs = multisite_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value],
-  Reference_sd = multisite_mixmod_data[, .N, .(Measurement_Set, Reference_value)][order(Measurement_Set), Reference_value * 0.01],
-  Measurement_Set = multisite_mixmod_data[, Measurement_Set],
+  Reference_obs = multisite_mixmod_data[, .N, .(Dimension, Reference_value)][order(Dimension), Reference_value],
+  Reference_sd = multisite_mixmod_data[, .N, .(Dimension, Reference_value)][order(Dimension), Reference_value * 0.01],
+  Dimension = multisite_mixmod_data[, Dimension],
   Specimen = multisite_mixmod_data[, Specimen_No],
   #Demographic observations
   N_Immature_obs = multisite_demographic_observations[, .N],
@@ -92,10 +92,10 @@ multisite_mixmod_standata <- list(
   prior_theta_raw_2 = c(0, 1.5),
   prior_mu_female = c(0, 0.2),
   prior_logdelta_immature = c(-3.5, 0.5),
-  prior_logdelta_male = c(-2.7, 0.5),
-  prior_logsigma_immature = c(-3.05, 0.25),
-  prior_logsigma_female = c(-3.1, 0.2),
-  prior_logsigma_male = c(-3.1, 0.2)
+  prior_logdelta_male = c(-2.7, 0.2),
+  prior_logsigma_immature = c(-3.05, 0.1),
+  prior_logsigma_female = c(-3.1, 0.1),
+  prior_logsigma_male = c(-3.1, 0.1)
 )
 LSI_multisite_model <- cmdstan_model("./Scripts/LSI_mixture_model_multisite.stan")
 multisite_samples <- LSI_multisite_model$sample(
