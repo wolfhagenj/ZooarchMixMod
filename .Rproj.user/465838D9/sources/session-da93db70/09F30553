@@ -3,7 +3,7 @@
     "path": "C:/Users/jwolfhag/OneDrive - purdue.edu/Documents/GitHub/ZooarchMixMod/ZooarchMixtureMod.Rmd",
     "project_path": "ZooarchMixtureMod.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "656478241",
     "contents": "",
     "dirty": false,
     "created": 1655999025518.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "40,17",
-        "scrollLine": "24"
+        "cursorPosition": "3406,173",
+        "scrollLine": "3394"
     },
     "folds": "",
-    "lastKnownWriteTime": 1657652347,
+    "lastKnownWriteTime": 1677696979,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1657652347470,
+    "last_content_update": 1677696979217,
     "read_only": false,
     "read_only_alternatives": []
 }
