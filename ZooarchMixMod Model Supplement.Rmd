@@ -801,14 +801,14 @@ multisite_proportion_plot <- ggplot(multisite_proportions[, .(group = factor(Sex
 #
 singlesite_simulated_proportions <- list(
   simulated_p_immature = paste0(100 * round(quantile(singlesite_proportions[Sex %in% "Immature", Proportion], 0.025), 2), "-", 100 * round(quantile(singlesite_proportions[Sex %in% "Immature", Proportion], 0.975), 2), "%"),
-  simulated_p_immature = paste0(100 * round(quantile(singlesite_proportions[Sex %in% "Female", Proportion], 0.025), 2), "-", 100 * round(quantile(singlesite_proportions[Sex %in% "Female", Proportion], 0.975), 2), "%"),
-  simulated_p_immature = paste0(100 * round(quantile(singlesite_proportions[Sex %in% "Male", Proportion], 0.025), 2), "-", 100 * round(quantile(singlesite_proportions[Sex %in% "Male", Proportion], 0.975), 2), "%")
+  simulated_p_female = paste0(100 * round(quantile(singlesite_proportions[Sex %in% "Female", Proportion], 0.025), 2), "-", 100 * round(quantile(singlesite_proportions[Sex %in% "Female", Proportion], 0.975), 2), "%"),
+  simulated_p_male = paste0(100 * round(quantile(singlesite_proportions[Sex %in% "Male", Proportion], 0.025), 2), "-", 100 * round(quantile(singlesite_proportions[Sex %in% "Male", Proportion], 0.975), 2), "%")
 )
 #
 multisite_simulated_proportions <- list(
   simulated_p_immature = paste0(100 * round(quantile(multisite_proportions[Sex %in% "Immature", Proportion], 0.025), 2), "-", 100 * round(quantile(multisite_proportions[Sex %in% "Immature", Proportion], 0.975), 2), "%"),
-  simulated_p_immature = paste0(100 * round(quantile(multisite_proportions[Sex %in% "Female", Proportion], 0.025), 2), "-", 100 * round(quantile(multisite_proportions[Sex %in% "Female", Proportion], 0.975), 2), "%"),
-  simulated_p_immature = paste0(100 * round(quantile(multisite_proportions[Sex %in% "Male", Proportion], 0.025), 2), "-", 100 * round(quantile(multisite_proportions[Sex %in% "Male", Proportion], 0.975), 2), "%")
+  simulated_p_female = paste0(100 * round(quantile(multisite_proportions[Sex %in% "Female", Proportion], 0.025), 2), "-", 100 * round(quantile(multisite_proportions[Sex %in% "Female", Proportion], 0.975), 2), "%"),
+  simulated_p_male = paste0(100 * round(quantile(multisite_proportions[Sex %in% "Male", Proportion], 0.025), 2), "-", 100 * round(quantile(multisite_proportions[Sex %in% "Male", Proportion], 0.975), 2), "%")
 )
 #
 singlesite_humbd <- data.table(Model = "Single Assemblage", Hum_Bd = c(sapply(singlesite_predicted_assemblages, function(x) x$Measurements[Measurement %in% "1.1", Measurement_value])))
