@@ -1,8 +1,9 @@
 ---
 title: "**MODEL SUPPLEMENT: A BAYESIAN MULTILEVEL MIXTURE MODEL FOR ZOOARCHAEOLOGICAL MEASUREMENTS**"
 author:
-  - "Jesse Wolfhagen^1^"
+  - "Jesse Wolfhagen^1,2^"
   - ^1^Department of Anthropology, Purdue University, West Lafayette, Indiana, USA
+  - ^2^Department of Archaeology, Max Planck Institute for Geoanthropology, Jena, Germany
   - " "
   - "email: jl.wolfhagen@gmail.com"
 date:
@@ -56,7 +57,7 @@ registerDoParallel(cl) #registering the cluster
 
 # *Model Supplement: A Bayesian Multilevel Mixture Model for Zooarchaeological Measurements*
 
-The Bayesian model developed for this paper describes assemblages of faunal measurements as a mixture of immature animals, (adult-sized) females, and (adult-sized) males that have distinct average body sizes and expected variation around that average size. The model uses multiple measured dimensions [e.g., humerus distal breadth "humerus Bd", radius proximal breadth "radius Bp", abbreviations following @vondendriesch_1976], which are first converted into a logarithmic size index, or LSI, values with a natural logarithm base [@meadow_1999; @wolfhagen_2020]. LSI observations from measurement sets are grouped together within a specimen to create individuals grouped into defined “element portions” that serve as the basis for the mixture model analysis. Element portions relate to categories used for element fusion (e.g., distal humerus) to relate biometry and mortality profiles; specimens that contain multiple element portions—like complete limb bones—are grouped into the latest-fusing element portion [compare to "skeletal part type" in @breslawski_2022].
+The Bayesian model developed for this paper describes assemblages of faunal measurements as a mixture of immature animals, (adult-sized) females, and (adult-sized) males that have distinct average body sizes and expected variation around that average size. The model uses multiple measured dimensions [e.g., humerus distal breadth "humerus Bd", radius proximal breadth "radius Bp", abbreviations following @vondendriesch_1976], which are first converted into a logarithmic size index, or LSI, values with a natural logarithm base [@meadow_1999; @wolfhagen_2020]. LSI observations from measurement sets are grouped together within a specimen to create individuals grouped into defined “element portions” that serve as the basis for the mixture model analysis. Element portions relate to categories used for element fusion (e.g., distal humerus) to relate biometry and mortality profiles; specimens that contain multiple element portions—like complete limb bones—are grouped into the latest-fusing element portion [compare to "skeletal part type" in @breslawski_2023].
 
 The multilevel structure of the model uses partial pooling to allow the parameters of the mixture model to vary between element portions while resisting overfitting. These element portion-specific parameters are related to each other through hyper-parameters, which describe the average value of the model parameters and the variability of model parameters across element portions [@wolfhagen_2020]. The following sections describe the details of the multilevel mixture model, including the model’s likelihood, the ways that the direct observations of measurements and demographic data are used by the model to account for measurement error, and the development of prior distributions for the model’s hyper-parameters and for parameters that govern the model’s multilevel structure. Finally, this supplement provides the full sets of equations for the single-site and multisite Bayesian multilevel mixture models and the prior distribution definitions used in the model applications described in the main text.
 
