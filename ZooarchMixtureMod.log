@@ -1,4 +1,4 @@
-This is XeTeX, Version 3.141592653-2.6-0.999994 (TeX Live 2022) (preloaded format=xelatex 2023.2.25)  19 MAY 2023 01:02
+This is XeTeX, Version 3.141592653-2.6-0.999994 (TeX Live 2022) (preloaded format=xelatex 2023.2.25)  22 MAY 2023 19:54
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -896,7 +896,7 @@ File: ./Output/Figures/figure_2.png Graphic file (type bmp)
 File: ./Output/Figures/figure_3.png Graphic file (type bmp)
 <./Output/Figures/figure_3.png>
 [14] [15] [16] [17] [18] [19] [20] [21]
-Overfull \hbox (7.31801pt too wide) in paragraph at lines 1157--1185
+Overfull \hbox (7.31801pt too wide) in paragraph at lines 1156--1184
  [][] 
  []
 
@@ -939,9 +939,7 @@ File: ./Output/Figures/figure_13.png Graphic file (type bmp)
 <./Output/Figures/figure_13.png>
 File: ./Output/Figures/figure_14.png Graphic file (type bmp)
 <./Output/Figures/figure_14.png>
-[43] [44] [45] [46] [47] [48] [49] [50] [51] [52] [53] [54] [55] [56] [57] [58] [59]
-Missing character: There is no Ҫ (U+04AA) in font [lmroman10-regular]:mapping=tex-text;!
-[60] [61] [62] [63] [64] [65] [66] [67] [68] [69] [70] [71]
+[43] [44] [45] [46] [47] [48] [49] [50] [51] [52] [53] [54] [55] [56] [57] [58] [59] [60] [61] [62] [63] [64] [65] [66] [67] [68] [69] [70] [71]
 File: ./Output/Figures/figure_s1.png Graphic file (type bmp)
 <./Output/Figures/figure_s1.png>
 File: ./Output/Figures/figure_s2.png Graphic file (type bmp)
@@ -960,9 +958,7 @@ File: ./Output/Figures/figure_s7.png Graphic file (type bmp)
 [76] [77] [78] [79] [80] [81] [82] [83] [84] [85] [86] [87] [88] [89] [90] [91] [92] [93]
 File: ./Output/Figures/model_supplement_figure_1.png Graphic file (type bmp)
 <./Output/Figures/model_supplement_figure_1.png>
-[94] [95] [96] [97] [98] [99] [100] [101] [102] [103] [104] [105] [106]
-Missing character: There is no Ҫ (U+04AA) in font [lmroman10-regular]:mapping=tex-text;!
-[107] [108] (./ZooarchMixtureMod.aux)
+[94] [95] [96] [97] [98] [99] [100] [101] [102] [103] [104] [105] [106] [107] [108] [109] (./ZooarchMixtureMod.aux)
 Package rerunfilecheck Info: File `ZooarchMixtureMod.out' has not changed.
 (rerunfilecheck)             Checksum: 9A4D7E07B6125F69CAA6505EFAE436B8;13552.
  ) 
@@ -975,4 +971,4 @@ Here is how much of TeX's memory you used:
  14 hyphenation exceptions out of 8191
  86i,23n,121p,959b,569s stack positions out of 10000i,1000n,20000p,200000b,200000s
 
-Output written on ZooarchMixtureMod.pdf (108 pages).
+Output written on ZooarchMixtureMod.pdf (109 pages).
