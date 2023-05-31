@@ -1,5 +1,5 @@
 # Estimating the Age and Sex Composition of Faunal Assemblages with Bayesian Multilevel Mixture Models
-This GitHub repository maintains the code, data, and RMarkdown files necessary to reproduce the pre-print of an article prepared for submission to the *Journal of Archaeological Method and Theory*, written by Jesse Wolfhagen. The method relies on [Stan](https://mc-stan.org/) for Bayesian analysis and is written for use in the R statistical computing framework.
+This GitHub repository maintains the code, data, and RMarkdown files necessary to reproduce the pre-print of an article submitted to the *Journal of Archaeological Method and Theory*, written by Jesse Wolfhagen. The article [is now published](https://link.springer.com/article/10.1007/s10816-023-09611-y) (DOI: 10.1007/s10816-023-09611-y). The method relies on [Stan](https://mc-stan.org/) for Bayesian analysis and is written for use in the R statistical computing framework.
 
 In addition, this repository maintains code necessary to apply the method to other zooarchaeological measurement datasets, including code for data wrangling if faunal datasets are maintained following the [OpenContext EOL Computational Data Challenge standards](https://opencontext.org/tables/f07bce4fb08cfe926505c9e534d89a09).
 
