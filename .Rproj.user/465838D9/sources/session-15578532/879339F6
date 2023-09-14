@@ -1,0 +1,26 @@
+{
+    "id": "879339F6",
+    "path": "C:/Users/jwolfhag/OneDrive - purdue.edu/Documents/GitHub/ZooarchMixMod/Scripts/LSI_mixture_model_singlesite.stan",
+    "project_path": "Scripts/LSI_mixture_model_singlesite.stan",
+    "type": "stan",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1694704126017.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "144,22",
+        "scrollLine": "138"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1677696461,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1677696461,
+    "read_only": false,
+    "read_only_alternatives": []
+}

@@ -1,26 +1,26 @@
 {
-    "id": "86DFB84D",
+    "id": "A496EDA3",
     "path": "C:/Users/jwolfhag/OneDrive - purdue.edu/Documents/GitHub/ZooarchMixMod/ZooarchMixMod Model Supplement.Rmd",
     "project_path": "ZooarchMixMod Model Supplement.Rmd",
     "type": "r_markdown",
-    "hash": "0",
+    "hash": "493839793",
     "contents": "",
     "dirty": false,
-    "created": 1684513454730.0,
-    "source_on_save": false,
-    "relative_order": 2,
+    "created": 1694705212923.0,
+    "source_on_save": true,
+    "relative_order": 3,
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "59,394",
-        "scrollLine": "43"
+        "cursorPosition": "418,24",
+        "scrollLine": "409"
     },
     "folds": "",
-    "lastKnownWriteTime": 1684513462,
+    "lastKnownWriteTime": 1694705474,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1684513462529,
+    "last_content_update": 1694705474317,
     "read_only": false,
     "read_only_alternatives": []
 }

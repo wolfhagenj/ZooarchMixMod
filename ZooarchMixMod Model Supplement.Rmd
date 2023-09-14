@@ -410,6 +410,8 @@ Prior predictive checks are a critical component of Bayesian model development w
 
 ```{r prior predictive checking, include = FALSE, eval = TRUE}
 #Functions to run the prior predictive checks#
+
+#samples from a normal distribution, but only accepts positive values
 rposnorm <- function(n, mu, sigma) {
   #samples from a defined normal distribution until it finds a positive value
   accept = FALSE
@@ -419,10 +421,18 @@ rposnorm <- function(n, mu, sigma) {
   }
   value
 }
+
+#creates a correlation matrix using the sampled marginal correlation values
 rho_matrix_maker <- function(lkjcorr, K) {
   Rho_matrix <- matrix(NA, ncol = K, nrow = K)
+  Rho_matrix[upper.tri(Rho_matrix)] <- lkjcorr
+  diag(Rho_matrix) <- 1
   for(i in 1:K) {
-    Rho_matrix[i,] <- c(rep(1, K - i), lkjcorr, rep(1, i - 1))
+    for(j in 1:K) {
+      if(is.na(Rho_matrix[i,j])) {
+        Rho_matrix[i,j] <- Rho_matrix[j,i]
+      }
+    }
   }
   Rho_matrix
 }
@@ -448,7 +458,8 @@ LSI_mixture_singlesite_prior_predictive_check <- function(N_Element_Portions = 5
                      rposnorm(1, 0, element_sigma_vals[8]))
   #
   z_element <- matrix(rnorm(8 * N_Element_Portions, 0, 1), ncol = N_Element_Portions, nrow = 8)
-  Rho_element <- rlkjcorr_marginal(1, K = 8, eta = 2)
+  #number of random correlations: ((Number of parameters)^2 - (Number of parameters)) / 2
+  Rho_element <- rlkjcorr_marginal((length(element_sigma)^2 - length(element_sigma)) / 2, K = 8, eta = 2)
   
   #Calculate a single set of the parameter values
   v_element <- t(diag(element_sigma) %*% rho_matrix_maker(Rho_element, 8) %*% diag(element_sigma) %*% z_element)
@@ -542,7 +553,8 @@ LSI_mixture_multisite_prior_predictive_check <- function(N_Element_Portions = 5,
                      rposnorm(1, 0, element_sigma_vals[8]))
   #
   z_element <- matrix(rnorm(8 * N_Element_Portions, 0, 1), ncol = N_Element_Portions, nrow = 8)
-  Rho_element <- rlkjcorr_marginal(1, K = 8, eta = 2)
+  #number of random correlations: ((Number of parameters)^2 - (Number of parameters)) / 2
+  Rho_element <- rlkjcorr_marginal((length(element_sigma)^2 - length(element_sigma)) / 2, K = 8, eta = 2)
   #
   site_sigma <- c(rposnorm(1, 0, site_sigma_vals[1]),
                      rposnorm(1, 0, site_sigma_vals[2]),
@@ -554,7 +566,7 @@ LSI_mixture_multisite_prior_predictive_check <- function(N_Element_Portions = 5,
                      rposnorm(1, 0, site_sigma_vals[8]))
   #
   z_site <- matrix(rnorm(8 * N_Sites, 0, 1), ncol = N_Sites, nrow = 8)
-  Rho_site <- rlkjcorr_marginal(1, K = 8, eta = 2)
+  Rho_site <- rlkjcorr_marginal((length(site_sigma)^2 - length(site_sigma)) / 2, K = 8, eta = 2)
   #
   interaction_sigma <- c(rposnorm(1, 0, interaction_sigma_vals[1]),
                      rposnorm(1, 0, interaction_sigma_vals[2]),
@@ -566,7 +578,7 @@ LSI_mixture_multisite_prior_predictive_check <- function(N_Element_Portions = 5,
                      rposnorm(1, 0, interaction_sigma_vals[8]))
   #
   z_interaction <- matrix(rnorm(8 * N_Sites * N_Element_Portions, 0, 1), ncol = N_Sites * N_Element_Portions, nrow = 8)
-  Rho_interaction <- rlkjcorr_marginal(1, K = 8, eta = 2)
+  Rho_interaction <- rlkjcorr_marginal((length(interaction_sigma)^2 - length(interaction_sigma)) / 2, K = 8, eta = 2)
   #Calculate a single set of the parameter values
   v_element <- t(diag(element_sigma) %*% rho_matrix_maker(Rho_element, 8) %*% diag(element_sigma) %*% z_element)
   v_site <- t(diag(site_sigma) %*% rho_matrix_maker(Rho_site, 8) %*% diag(site_sigma) %*% z_site)
