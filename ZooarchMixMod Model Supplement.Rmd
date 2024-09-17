@@ -248,8 +248,17 @@ shetland_sheep_samples <- reference_pop_msrmnt_error_LSI_model$sample(
 )
 
 #Save the posterior results
-shetland_sheep_stanfit <- rstan::read_stan_csv(shetland_sheep_samples$output_files())
-shetland_sheep_post <- extract(shetland_sheep_stanfit)
+#Function to save the results from a cmdstan object
+cmdstanr_extract_samples <- function(fit_obj) {
+  #credit to Andrew Johnson for this code (source: https://discourse.mc-stan.org/t/rstan-read-stan-csv-throwing-error-with-cmdstan-models-versions-2-35/35665/7)
+  vars <- fit_obj$metadata()$stan_variables
+  draws <- posterior::as_draws_rvars(fit_obj$draws())
+  
+  lapply(vars, \(var_name){  
+    posterior::draws_of(draws[[var_name]], with_chains = FALSE)
+  }) |> setNames(vars)
+}
+shetland_sheep_post <- cmdstanr_extract_samples(shetland_sheep_samples)
 ```
 
 Relevant prior estimates of the biologically-relevant parameters were derived from the biometry of `r popkin_sheep_summary$total_individual_n` known-age and known-sex Shetland sheep described in @popkin_etal_2012 (see Section 2.2). Castrated individuals were included as males and animals killed under one year of age were considered immature; this resulted in an assemblage of `r popkin_sheep_summary$immature_individual_n` immature animals, `r popkin_sheep_summary$female_individual_n` females, and `r popkin_sheep_summary$male_individual_n` males/castrates. The element portion definitions and included measurements are shown Table 4 of the main text. From the `r popkin_sheep_summary$total_specimen_n` element portions in the full assemblage, `r subsample_n` immature, female, and male element portions were randomly selected to create an assemblage of `r shetland_sheep_mixmod_standata_msrmnt_error$N_Specimens` element portions for analysis. $\operatorname{LSI}_e$ values are calculated using the *Ovis orientalis* female standard animal (FMC 57951) from Uerpmann and Uerpmann [-@uerpmann_uerpmann_1994: Table 12]. These specimens were modeled using a Bayesian multilevel mixture model that used their known identities to estimate the biologically relevant parameters directly ($\mu_2$, $\delta_1$, $\delta_2$, $\sigma_1$, $\sigma_2$, $\sigma_3$). The resulting hyper-parameters, which average across anatomical variation in the parameter values, are used as a baseline for defining prior distributions of the parameter in the archaeological model (see Figure 3 in the main text).

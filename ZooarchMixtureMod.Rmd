@@ -31,6 +31,7 @@ nocite: |
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 options(kableExtra.auto_format = FALSE)
+library("bayesplot")
 library("boot")
 library("Cairo")
 library("cmdstanr")
@@ -445,8 +446,17 @@ shetland_sheep_samples <- reference_pop_msrmnt_error_LSI_model$sample(
 )
 
 #Save the posterior results
-shetland_sheep_stanfit <- rstan::read_stan_csv(shetland_sheep_samples$output_files())
-shetland_sheep_post <- extract(shetland_sheep_stanfit)
+#Function to save the results from a cmdstan object
+cmdstanr_extract_samples <- function(fit_obj) {
+  #credit to Andrew Johnson for this code (source: https://discourse.mc-stan.org/t/rstan-read-stan-csv-throwing-error-with-cmdstan-models-versions-2-35/35665/7)
+  vars <- fit_obj$metadata()$stan_variables
+  draws <- posterior::as_draws_rvars(fit_obj$draws())
+  
+  lapply(vars, \(var_name){  
+    posterior::draws_of(draws[[var_name]], with_chains = FALSE)
+  }) |> setNames(vars)
+}
+shetland_sheep_post <- cmdstanr_extract_samples(shetland_sheep_samples)
 ```
 
 ```{r known-specimen posterior analysis, include = FALSE, eval = TRUE}
@@ -1344,7 +1354,7 @@ Bayesian models that use Monte Carlo methods, like the ones used here, rely on c
 
 ### *4.1 Simulated Assemblages: testing model accuracy*
 
-```{r single assemblage simulation stanfit, include = FALSE, eval = TRUE}
+```{r single assemblage simulation stan model fit, include = FALSE, eval = TRUE}
 #Single Assemblage Analysis
 single_assemblage_mixmod_standata <- list(
   #Sample sizes
@@ -1388,11 +1398,10 @@ single_assemblage_samples <- singlesite_mixture_stanmodel$sample(
   adapt_delta = 0.90,
   max_treedepth = 15
 )
-single_assemblage_stanfit <- rstan::read_stan_csv(single_assemblage_samples$output_files())
-single_assemblage_post <- extract(single_assemblage_stanfit)
+single_assemblage_post <- cmdstanr_extract_samples(single_assemblage_samples)
 ```
 
-```{r multisite simulation stanfit, include = FALSE, eval = TRUE}
+```{r multisite simulation stan model fit, include = FALSE, eval = TRUE}
 #Multisite Analysis
 multisite_mixmod_standata <- list(
   #Sample sizes
@@ -1442,8 +1451,7 @@ multisite_samples <- LSI_multisite_model$sample(
   seed = 1099252793,
   max_treedepth = 15
 )
-multisite_stanfit <- rstan::read_stan_csv(multisite_samples$output_files())
-multisite_post <- extract(multisite_stanfit)
+multisite_post <- cmdstanr_extract_samples(multisite_samples)
 ```
 
 ```{r posterior analysis of the simulated assemblages, include = FALSE, eval = TRUE}
@@ -2115,8 +2123,7 @@ pinarbasi_samples <- singlesite_mixture_stanmodel$sample(
   seed = 1436453702,
   max_treedepth = 15
 )
-pinarbasi_stanfit <- rstan::read_stan_csv(pinarbasi_samples$output_files())
-pinarbasi_post <- extract(pinarbasi_stanfit)
+pinarbasi_post <- cmdstanr_extract_samples(pinarbasi_samples)
 ```
 
 ```{r nw anatolian model fit, include = FALSE, eval = TRUE}
@@ -2170,8 +2177,7 @@ nw_anatolian_multisite_samples <- multisite_mixture_stanmodel$sample(
   max_treedepth = 15
 )
 #
-nw_anatolian_multisite_stanfit <- rstan::read_stan_csv(nw_anatolian_multisite_samples$output_files())
-nw_anatolian_post <- extract(nw_anatolian_multisite_stanfit)
+nw_anatolian_post <- cmdstanr_extract_samples(nw_anatolian_multisite_samples)
 ```
 
 ```{r functions for compositional analysis, include = FALSE, eval = TRUE}
@@ -2891,15 +2897,15 @@ kbl(table_nw_anatolian_site_parameters[, .(Parameter, `Posterior Mean`, `Posteri
 ### *Traceplots of Posterior Distributions of Overall Model Parameters*
 
 ```{r simulated single assemblage traceplot, include = FALSE, eval = TRUE}
-single_assemblage_theta1_plot <- traceplot(single_assemblage_stanfit, pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_theta2_plot <- traceplot(single_assemblage_stanfit, pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_theta3_plot <- traceplot(single_assemblage_stanfit, pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_mu1_plot <- traceplot(single_assemblage_stanfit, pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_mu2_plot <- traceplot(single_assemblage_stanfit, pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_mu3_plot <- traceplot(single_assemblage_stanfit, pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_sigma1_plot <- traceplot(single_assemblage_stanfit, pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_sigma2_plot <- traceplot(single_assemblage_stanfit, pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-single_assemblage_sigma3_plot <- traceplot(single_assemblage_stanfit, pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_theta1_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_theta2_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_theta3_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_mu1_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_mu2_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_mu3_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_sigma1_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_sigma2_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+single_assemblage_sigma3_plot <- mcmc_trace(single_assemblage_samples$draws(), pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
 #
 single_assemblage_trace_plot <- ggarrange(single_assemblage_theta1_plot, single_assemblage_theta2_plot, single_assemblage_theta3_plot, single_assemblage_mu1_plot, single_assemblage_mu2_plot, single_assemblage_mu3_plot, single_assemblage_sigma1_plot, single_assemblage_sigma2_plot, single_assemblage_sigma3_plot, common.legend = T, legend = "bottom")
 #
@@ -2911,15 +2917,15 @@ dev.off()
 ```
 
 ```{r simulated multisite traceplot, include = FALSE, eval = TRUE}
-multisite_theta1_plot <- traceplot(multisite_stanfit, pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_theta2_plot <- traceplot(multisite_stanfit, pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_theta3_plot <- traceplot(multisite_stanfit, pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_mu1_plot <- traceplot(multisite_stanfit, pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_mu2_plot <- traceplot(multisite_stanfit, pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_mu3_plot <- traceplot(multisite_stanfit, pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_sigma1_plot <- traceplot(multisite_stanfit, pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_sigma2_plot <- traceplot(multisite_stanfit, pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-multisite_sigma3_plot <- traceplot(multisite_stanfit, pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_theta1_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_theta2_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_theta3_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_mu1_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_mu2_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_mu3_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_sigma1_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_sigma2_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+multisite_sigma3_plot <- mcmc_trace(multisite_samples$draws(), pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
 #
 multisite_assemblage_trace_plot <- ggarrange(multisite_theta1_plot, multisite_theta2_plot, multisite_theta3_plot, multisite_mu1_plot, multisite_mu2_plot, multisite_mu3_plot, multisite_sigma1_plot, multisite_sigma2_plot, multisite_sigma3_plot, common.legend = T, legend = "bottom")
 #
@@ -2931,15 +2937,15 @@ dev.off()
 ```
 
 ```{r Pinarbasi B sheep traceplot, include = FALSE, eval = TRUE}
-pinarbasi_theta1_plot <- traceplot(pinarbasi_stanfit, pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_theta2_plot <- traceplot(pinarbasi_stanfit, pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_theta3_plot <- traceplot(pinarbasi_stanfit, pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_mu1_plot <- traceplot(pinarbasi_stanfit, pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_mu2_plot <- traceplot(pinarbasi_stanfit, pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_mu3_plot <- traceplot(pinarbasi_stanfit, pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_sigma1_plot <- traceplot(pinarbasi_stanfit, pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_sigma2_plot <- traceplot(pinarbasi_stanfit, pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-pinarbasi_sigma3_plot <- traceplot(pinarbasi_stanfit, pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_theta1_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_theta2_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_theta3_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_mu1_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_mu2_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_mu3_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_sigma1_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_sigma2_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+pinarbasi_sigma3_plot <- mcmc_trace(pinarbasi_samples$draws(), pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
 #
 pinarbasi_trace_plot <- ggarrange(pinarbasi_theta1_plot, pinarbasi_theta2_plot, pinarbasi_theta3_plot, pinarbasi_mu1_plot, pinarbasi_mu2_plot, pinarbasi_mu3_plot, pinarbasi_sigma1_plot, pinarbasi_sigma2_plot, pinarbasi_sigma3_plot, common.legend = T, legend = "bottom")
 #
@@ -2951,15 +2957,15 @@ dev.off()
 ```
 
 ```{r Northwest Anatolian cattle traceplot, include = FALSE, eval = TRUE}
-nw_anatolian_theta1_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_theta2_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_theta3_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_mu1_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_mu2_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_mu3_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_sigma1_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_sigma2_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
-nw_anatolian_sigma3_plot <- traceplot(nw_anatolian_multisite_stanfit, pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_theta1_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_theta[1]") + labs(title = expression(paste(theta[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_theta2_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_theta[2]") + labs(title = expression(paste(theta[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_theta3_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_theta[3]") + labs(title = expression(paste(theta[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_mu1_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_mu_immature") + labs(title = expression(paste(mu[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_mu2_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_mu_female") + labs(title = expression(paste(mu[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_mu3_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_mu_male") + labs(title = expression(paste(mu[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_sigma1_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_sigma_immature") + labs(title = expression(paste(sigma[1])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_sigma2_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_sigma_female") + labs(title = expression(paste(sigma[2])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
+nw_anatolian_sigma3_plot <- mcmc_trace(nw_anatolian_multisite_samples$draws(), pars = "grand_sigma_male") + labs(title = expression(paste(sigma[3])), y = element_blank()) + theme(plot.title = element_text(hjust = 0.5))
 #
 nw_anatolian_trace_plot <- ggarrange(nw_anatolian_theta1_plot, nw_anatolian_theta2_plot, nw_anatolian_theta3_plot, nw_anatolian_mu1_plot, nw_anatolian_mu2_plot, nw_anatolian_mu3_plot, nw_anatolian_sigma1_plot, nw_anatolian_sigma2_plot, nw_anatolian_sigma3_plot, common.legend = T, legend = "bottom")
 #

@@ -20,9 +20,10 @@ All model parameters vary based on the specimen's element portion.
 ---
 
 This model was written as part of the following paper:
-Estimating the Ontogenetic Age and Sex Composition of Faunal Assemblages with Bayesian Multilevel Mixture Models [!!! JOURNAL]
-(DOI: [!!!DOI])
-Associated R code and other Stan scripts can be found at the following OSF Project: [!!!DOI LINK]
+Wolfhagen, J. L. (2023). "Estimating the Ontogenetic Age and Sex Composition of Faunal Assemblages with Bayesian Multilevel Mixture Models." Journal of Archaeological Method and Theory.
+(DOI: 10.1007/s10816-023-09611-y)
+Associated R code and other Stan scripts can be found at the following OSF Project: 10.17605/OSF.IO/4H9W6
+Also found in the following GitHub page: https://github.com/wolfhagenj/ZooarchMixMod
 
 Learn more about model development with Stan at:
     http://mc-stan.org/users/interfaces/rstan.html
@@ -62,16 +63,15 @@ data {
   int<lower = 1> N_Element_Portions; //number of elements
   int<lower = 1> N_Dimensions; //number of measurement types
   //Specimen observations
-  int<lower = 1, upper = N_Element_Portions> Element_Portion[N_Specimens]; //what element is the specimen?
-  int<lower = 1, upper = 3> Group[N_Specimens]; //1 = immature, 2 = female, 3 = male/castrate
+  array[N_Specimens] int<lower = 1, upper = N_Element_Portions> Element_Portion; //what element is the specimen?
+  array[N_Specimens] int<lower = 1, upper = 3> Group; //1 = immature, 2 = female, 3 = male/castrate
 	//Measurement observations
-	// real LSI[N_Specimens];
-	real<lower = 0> Measurement_obs[N_Measurements]; //observed measurements
-	real<lower = 0> Measurement_sd[N_Measurements]; //uncertainty around that measurement
-	real<lower = 0> Reference_obs[N_Dimensions]; //reference specimen measurements
-	real<lower = 0> Reference_sd[N_Dimensions]; //uncertainty around the measurement
-  int<lower = 1, upper = N_Dimensions> Dimension[N_Measurements]; //which measurement type is this?
-	int<lower = 1, upper = N_Specimens> Specimen[N_Measurements]; // which specimen is this measurement coming from?
+	array[N_Measurements] real<lower = 0> Measurement_obs; //observed measurements
+	array[N_Measurements] real<lower = 0> Measurement_sd; //uncertainty around that measurement
+	array[N_Dimensions] real<lower = 0> Reference_obs; //reference specimen measurements
+	array[N_Dimensions] real<lower = 0> Reference_sd; //uncertainty around the measurement
+  array[N_Measurements] int<lower = 1, upper = N_Dimensions> Dimension; //which measurement type is this?
+	array[N_Measurements] int<lower = 1, upper = N_Specimens> Specimen; // which specimen is this measurement coming from?
 }
 /* The model parameters defined for the model:
 These parameters define the overall relationship

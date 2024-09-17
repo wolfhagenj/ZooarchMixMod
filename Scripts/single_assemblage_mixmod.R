@@ -13,13 +13,14 @@
 ####Load the packages####
 #These packages are necessary for the script. Use the following line (without the comment #) to install
 #the packages if you have not already installed them:
-#install.packages("data.table", "cmdstanr", "rstan")
+#install.packages("data.table", "cmdstanr", "ggplot2", "bayesplot")
 #For "cmdstanr", see the following installation instructions: https://mc-stan.org/cmdstanr/articles/cmdstanr.html
 #For "rstan", see the following installation instructions: https://github.com/stan-dev/rstan/wiki/RStan-Getting-Started
 #In general, you will need to install rtools to have a C++ toolchain; the above links help provide steps to do so.
 library("cmdstanr")
 library("data.table")
-library("rstan")
+library("ggplot2")
+library("bayesplot")
 
 ####Import the data (if necessary)####
 #Import mixture model data. This script uses the results of the "data_cleaning.R" as an example
@@ -106,26 +107,36 @@ single_assemblage_samples$summary(c("mu_female"))
 #Beyond summaries, it is also worth looking at trace plots that overlay each chain on top of one another
 #Ideally, all of the chains should overlap each other and there shouldn't be any directionality across the
 #length of the chains. This is sometimes called looking for "fuzzy caterpillars".
-#To do this, first save the model fit into an rstan stanfit object
-single_assemblage_stanfit <- rstan::read_stan_csv(single_assemblage_samples$output_files())
-
-#Then use the convenient plotting function for a defined variable
-traceplot(single_assemblage_stanfit, c("grand_theta_raw",
-                                       "grand_mu_female", "grand_logdelta_immature", "grand_logdelta_male",
-                                       "grand_logsigma_immature", "grand_logsigma_female", "grand_logsigma_male"))
+grand_variable_names <- c("grand_theta_raw",
+                          "grand_mu_female", "grand_logdelta_immature", "grand_logdelta_male",
+                          "grand_logsigma_immature", "grand_logsigma_female", "grand_logsigma_male")
+mcmc_trace(single_assemblage_samples$draws(), regex_pars = grand_variable_names)
 #
-traceplot(single_assemblage_stanfit, "mu_female")
+mcmc_trace(single_assemblage_samples$draws(), regex_pars = "mu_female")
 
 ####Exporting the posterior distributions####
 #For posterior analysis, you'll want to have the exact posterior estimates of the parameter values.
-#These can be extracted from the stanfit object
-single_assemblage_post <- extract(single_assemblage_stanfit)
+#These can be extracted from the cmdstanr object using a bespoke function
+cmdstanr_extract_samples <- function(fit_obj) {
+  #credit to Andrew Johnson for this code (source: https://discourse.mc-stan.org/t/rstan-read-stan-csv-throwing-error-with-cmdstan-models-versions-2-35/35665/7)
+  vars <- fit_obj$metadata()$stan_variables
+  draws <- posterior::as_draws_rvars(fit_obj$draws())
+  
+  lapply(vars, \(var_name){  
+    posterior::draws_of(draws[[var_name]], with_chains = FALSE)
+  }) |> setNames(vars)
+}
+single_assemblage_post <- cmdstanr_extract_samples(single_assemblage_samples)
 
 #This object can then be saved to be uploaded later or used directly in another script as an open R object.
 
 #IMPORTANT: To ensure reproducibility, you can also extract the random seed used to generate your model
 #and then place the seed in the samples call using the argument
 #seed = [whatever number you were given]
-get_seed(single_assemblage_stanfit)
+get_seed <- function(cmdstan_object) {
+  string <- as.numeric(stringr::str_extract(cmdstan_object$output()[[1]][grep("seed", cmdstan_object$output()[[1]])], pattern = "[0-9]{1,}"))
+  string
+}
+get_seed(single_assemblage_samples)
 #This would provide strict reproducibility, as you would get the exact same posterior samples.
 #Overall results, however, shouldn't depend on the specific seed you use.

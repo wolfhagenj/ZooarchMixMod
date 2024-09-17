@@ -22,9 +22,10 @@ These parameters vary based on the specific measurement type and the site of the
 ---
 
 This model was written as part of the following paper:
-Estimating the Ontogenetic Age and Sex Composition of Faunal Assemblages with Bayesian Multilevel Mixture Models [!!! JOURNAL]
-(DOI: [!!!DOI])
-Associated R code and other Stan scripts can be found at the following OSF Project: [!!!DOI LINK]
+Wolfhagen, J. L. (2023). "Estimating the Ontogenetic Age and Sex Composition of Faunal Assemblages with Bayesian Multilevel Mixture Models." Journal of Archaeological Method and Theory.
+(DOI: 10.1007/s10816-023-09611-y)
+Associated R code and other Stan scripts can be found at the following OSF Project: 10.17605/OSF.IO/4H9W6
+Also found in the following GitHub page: https://github.com/wolfhagenj/ZooarchMixMod
 
 Learn more about model development with Stan at:
     http://mc-stan.org/users/interfaces/rstan.html
@@ -102,35 +103,35 @@ data {
   int<lower = 1> N_Element_Portions; //number of elements
   int<lower = 1> N_Dimensions; //number of measurement types
   //Specimen observations
-  int<lower = 1, upper = N_Sites> Site[N_Specimens]; //what site does the specimen come from?
-  int<lower = 1, upper = N_Element_Portions> Element_Portion[N_Specimens]; //what element is the specimen?
-	int<lower = 0, upper = 1> Immature[N_Specimens]; //whether the specimen could be considered young
+  array[N_Specimens] int<lower = 1, upper = N_Sites> Site; //what site does the specimen come from?
+  array[N_Specimens] int<lower = 1, upper = N_Element_Portions> Element_Portion; //what element is the specimen?
+	array[N_Specimens] int<lower = 0, upper = 1> Immature; //whether the specimen could be considered young
 	matrix<lower = 0, upper = 1>[N_Sites, N_Element_Portions] Immature_Proportion; //the proportion of specimens that are potentially young for each element (impacts the prob(Young) for specimens)
 	//Measurement observations
-	real<lower = 0> Measurement_obs[N_Measurements]; //observed measurements
-	real<lower = 0> Measurement_sd[N_Measurements]; //uncertainty around that measurement
-	real<lower = 0> Reference_obs[N_Dimensions]; //reference specimen measurements
-	real<lower = 0> Reference_sd[N_Dimensions]; //uncertainty around the measurement
-  int<lower = 1, upper = N_Dimensions> Dimension[N_Measurements]; //which measurement type is this?
-	int<lower = 1, upper = N_Specimens> Specimen[N_Measurements]; // which specimen is this measurement coming from?
+	array[N_Measurements] real<lower = 0> Measurement_obs; //observed measurements
+	array[N_Measurements] real<lower = 0> Measurement_sd; //uncertainty around that measurement
+	array[N_Dimensions] real<lower = 0> Reference_obs; //reference specimen measurements
+	array[N_Dimensions] real<lower = 0> Reference_sd; //uncertainty around the measurement
+  array[N_Measurements] int<lower = 1, upper = N_Dimensions> Dimension; //which measurement type is this?
+	array[N_Measurements] int<lower = 1, upper = N_Specimens> Specimen; // which specimen is this measurement coming from?
   //Demographic observations
   int<lower = 1> N_Immature_obs;
-	int<lower = 1, upper = N_Sites> Immature_obs_site[N_Immature_obs];
-	int<lower = 0> Immature_obs[N_Immature_obs];
-	int<lower = 0> Immature_obs_n[N_Immature_obs];
+	array[N_Immature_obs] int<lower = 1, upper = N_Sites> Immature_obs_site;
+	array[N_Immature_obs] int<lower = 0> Immature_obs;
+	array[N_Immature_obs] int<lower = 0> Immature_obs_n;
 	int<lower = 1> N_Female_obs;
-	int<lower = 1, upper = N_Sites> Female_obs_site[N_Female_obs];
-	int<lower = 0> Female_obs[N_Female_obs];
-	int<lower = 0> Female_obs_n[N_Female_obs];
+	array[N_Female_obs] int<lower = 1, upper = N_Sites> Female_obs_site;
+	array[N_Female_obs] int<lower = 0> Female_obs;
+	array[N_Female_obs] int<lower = 0> Female_obs_n;
   //User-defined prior distributions
-  real prior_theta_raw_1[2];
-  real prior_theta_raw_2[2];
-  real prior_mu_female[2];
-  real prior_logdelta_immature[2];
-  real prior_logdelta_male[2];
-  real prior_logsigma_immature[2];
-  real prior_logsigma_female[2];
-  real prior_logsigma_male[2];
+  array[2] real prior_theta_raw_1;
+  array[2] real prior_theta_raw_2;
+  array[2] real prior_mu_female;
+  array[2] real prior_logdelta_immature;
+  array[2] real prior_logdelta_male;
+  array[2] real prior_logsigma_immature;
+  array[2] real prior_logsigma_female;
+  array[2] real prior_logsigma_male;
 }
 /* The model parameters defined for the model:
 These parameters define the overall relationship
@@ -188,8 +189,8 @@ transformed parameters {
   matrix[N_Element_Portions * N_Sites, 8] v_interaction;
   matrix[8, 8] Rho_interaction;
   //output variables (un-transformed)
-  vector[N_Sites] site_theta_raw[2];
-  matrix[N_Sites, N_Element_Portions] theta_raw[2];
+  array[2] vector[N_Sites] site_theta_raw;
+  array[2] matrix[N_Sites, N_Element_Portions] theta_raw;
   matrix[N_Sites, N_Element_Portions] mu_female;
   matrix[N_Sites, N_Element_Portions] logdelta_immature;
   matrix[N_Sites, N_Element_Portions] logdelta_male;
@@ -197,10 +198,10 @@ transformed parameters {
   matrix[N_Sites, N_Element_Portions] logsigma_female;
   matrix[N_Sites, N_Element_Portions] logsigma_male;
   //output variables (transformed)
-  vector[N_Sites] site_theta[3];
+  array[3] vector[N_Sites] site_theta;
   vector[N_Sites] site_p_immature;
   vector[N_Sites] site_theta_female;
-  matrix[N_Sites, N_Element_Portions] theta[3];
+  array[3] matrix[N_Sites, N_Element_Portions] theta;
   matrix[N_Sites, N_Element_Portions] mu_immature;
   matrix[N_Sites, N_Element_Portions] mu_male;
   matrix[N_Sites, N_Element_Portions] sigma_immature;
@@ -342,7 +343,7 @@ generated quantities {
   vector[N_Sites] site_sigma_female;
   vector[N_Sites] site_sigma_male;
   //specimen-level probabilities of being young, female, or male
-  simplex[3] specimen_prob[N_Specimens];
+  array[N_Specimens] simplex[3] specimen_prob;
 
   //population-level parameter estimates
   grand_theta[1] = inv_logit(grand_theta_raw[1] + log(0.5));
